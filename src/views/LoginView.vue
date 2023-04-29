@@ -93,6 +93,8 @@ export default {
         sessionStorage.setItem("token", data.token);
         sessionStorage.setItem("userId", data.id);
 
+        this.$socket.emit("loggedIn", data.id);
+
         this.$router.push("/");
       } catch (error) {
         console.error("Error logging in:", error);
@@ -125,8 +127,10 @@ export default {
         console.log("Signup response:", data);
 
         // Save the token and user ID in local storage
-        localStorage.setItem("token", data.token);
-        localStorage.setItem("userId", data.id);
+        sessionStorage.setItem("token", data.token);
+        sessionStorage.setItem("userId", data.id);
+
+        this.$socket.emit("loggedIn", data.id);
 
         this.$router.push("/");
       } catch (error) {

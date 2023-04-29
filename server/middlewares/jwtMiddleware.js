@@ -1,4 +1,3 @@
-require("dotenv").config();
 const jwt = require("jsonwebtoken");
 
 const jwtMiddleware = (req, res, next) => {
@@ -7,7 +6,7 @@ const jwtMiddleware = (req, res, next) => {
   if (authHeader) {
     const token = authHeader.split(" ")[1];
     try {
-      const decoded = jwt.verify(token, process.env.JWT_SECRET_KEY);
+      const decoded = jwt.verify(token, process.env.AUTH_SECRET_KEY);
 
       req.userId = decoded.id;
 

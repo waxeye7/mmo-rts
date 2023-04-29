@@ -1,10 +1,8 @@
-require("dotenv").config();
 const jwt = require("jsonwebtoken");
 const User = require("../../models/user");
 const { hashPassword } = require("../../utils/passwordHashing");
 const signup = async (req, res) => {
   try {
-    console.log(req.body)
     const { username, password } = req.body;
 
     const user = await User.findOne({ username });
@@ -25,12 +23,12 @@ const signup = async (req, res) => {
 
     const token = jwt.sign(
       { id: newUser._id },
-      process.env.JWT_SECRET_KEY
+      process.env.AUTH_SECRET_KEY
     );
     res.json({
       message: "User created successfully",
       token,
-      id: user.id,
+      id: newUser._id,
     });
   } catch (error) {
     console.error("Error in sign up:", error);

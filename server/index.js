@@ -1,6 +1,14 @@
+const cron = require('node-cron');
+require("dotenv").config();
 const mongoose = require('mongoose')
 const url = 'mongodb://127.0.0.1:27017/mmo-rts';
 const loadBoardState = require("./controllers/board/loadBoardState");
+const saveBoardState = require("./controllers/board/saveBoardState");
+const resetActions = require("./controllers/user/resetActions");
+const TaskTimestamp = require('./models/taskTimestamp');
+const loadNextTaskTimestamp = require('./controllers/taskTimestamp/loadNextTaskTimestamp');
+const decrementActions = require('./controllers/user/decrementActions');
+const User = require('./models/user');
 
 mongoose.connect(url, { useNewUrlParser: true })
 const db = mongoose.connection;
@@ -8,6 +16,7 @@ let board;
 db.once('open', async () => {
   console.log('Database connected:', url)
   board = await loadBoardState(db);
+  nextTaskTimestamp = await loadNextTaskTimestamp();
 })
 
 db.on('error', err => {
@@ -15,7 +24,7 @@ db.on('error', err => {
 })
 
 
-require('dotenv').config();
+
 const express = require('express');
 const http = require('http');
 const socketIO = require('socket.io');
@@ -53,19 +62,33 @@ app.use(express.static('dist'));
 
 // Handle Socket.IO connections
 io.on('connection', (socket) => {
-  console.log('A user connected');
+  console.log('A user connected', socket.id);
 
   // Add your game's server-side code here
 
   // Send the initial board state to the client
-  socket.emit('updateBoard', board);
+
+  // socket.emit('updateBoard', board);
+  // socket.emit('updateTimer', timerValue);
+
+  // Listen for a request to get the initial values
+  socket.on('getInitialValues', () => {
+    socket.emit('updateBoard', board);
+    broadcastRemainingTime();
+  });
 
   // Listen for actions from the client
   socket.on('action', (action) => {
-    handleAction(action);
+    handleAction(socket, action);
 
     // Send the updated board state to all connected clients
     io.sockets.emit('updateBoard', board);
+  });
+
+  // Listen for the 'loggedIn' event
+  socket.on("loggedIn", (userId) => {
+    // Store the user's socket using their user ID as the key
+    userSockets[userId] = socket;
   });
 
 
@@ -93,14 +116,120 @@ server.listen(port, () => {
   console.log(`Server is running on port ${port}`);
 });
 
+const processActions = async () => {
+  for (const action of actionsQueue) {
+    if (action.type === 'place') {
+      const { x, y, structureType, username, userId } = action.payload;
+      
+      if(checkIfPlayerCanBuildThisBuilding(username, structureType)) {
+        console.log(`${username} can't build ${structureType}`);
+        continue;
+      }
+      
+      decrementActions(userId);
+      board[y][x].building = { structureType, owner: username, hits: 5000 };
+    }
+  }
+
+  // Save the updated board state to the database
+  await saveBoardState(board);
+
+  // Send the updated board state to all connected clients
+  io.sockets.emit('updateBoard', board);
+
+  // Clear the actions queue
+  actionsQueue = [];
+};
 
 
-
-const handleAction = (action) => {
+const handleAction = async (socket, action) => {
   console.log('Received action:', action);
-  if (action.type === 'place') {
-    const { x, y, color } = action.payload;
-    board[x][y].color = color;
+  const userId = action.payload.userId;
+
+  // Check if the user has actions left
+  const user = await User.findById(userId);
+
+  if (user.actions <= 0) {
+
+    console.log("User has no actions left")
+
+    // Increment userAttempts for this user or set it to 1 if it doesn't exist
+    userAttempts[userId] = (userAttempts[userId] || 0) + 1;
+
+    if(userAttempts[userId]) {
+      if (userAttempts[userId] >= 13) {
+        // Log the user out by emitting a 'forceLogout' event
+        userSockets[userId].emit('forceLogout');
+      } else if (userAttempts[userId] >= 10) {
+        // Emit a 'warning' event to the user's client
+        userSockets[userId].emit('warning', 'You have no actions left. Continuing to try will result in being logged out.');
+      }
+      return;
+    }
+  }
+
+  // If the user has actions left, proceed with the action and reset the attempts
+  userAttempts[userId] = 0;
+
+  let updatedUser = await decrementActions(userId);
+  if(updatedUser) {
+    socket.emit('updateUser', updatedUser);
+    actionsQueue.push(action);
+  }
+  else {
+    console.log("updated user not found. error here.")
   }
 };
 
+const checkIfPlayerCanBuildThisBuilding = (username, buildingType) => {
+  const buildings = board.reduce((acc, row) => {
+    return acc.concat(row.filter(cell => cell.building && cell.building.owner === username));
+  }, []);
+  if(buildingType === "structureSpawn") return buildings.some(building => building.building.structureType === buildingType);
+};
+
+const broadcastRemainingTime = () => {
+  const remainingTime = Math.floor((nextTaskTimestamp - Date.now()) / 1000);
+  io.sockets.emit('updateTimer', remainingTime);
+};
+
+const userSockets = {};
+const userAttempts = {};
+let actionsQueue = [];
+let nextTaskTimestamp;
+broadcastRemainingTime();
+
+// setInterval(() => {
+//   timerValue -= 1;
+//   if (timerValue === 0) {
+    // processActions();
+    // resetActions();
+    // timerValue = maxTimerValue;
+    // io.sockets.emit('updateTimer', timerValue);
+//   }
+// }, 1000);
+
+
+cron.schedule('*/30 * * * * *', async () => {
+// cron.schedule('0 */12 * * *', async () => {
+
+  processActions();
+  const resetSuccessful = await resetActions();
+
+
+  if(resetSuccessful) {
+      // Emit 'actionsReset' event to all connected clients
+      io.sockets.emit('actionsReset');
+  }
+
+
+  const newTimestamp = Date.now() + 30 * 1000;
+  // const newTimestamp = Date.now() + 12 * 60 * 60 * 1000;
+  const taskTimestamp = await TaskTimestamp.findOne({});
+  taskTimestamp.timestamp = newTimestamp;
+  await taskTimestamp.save();
+  nextTaskTimestamp = newTimestamp;
+
+  // Broadcast the remaining time
+  broadcastRemainingTime();
+});

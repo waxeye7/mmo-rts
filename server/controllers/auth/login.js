@@ -1,4 +1,3 @@
-require("dotenv").config();
 const jwt = require("jsonwebtoken");
 const User = require("../../models/user");
 const { verifyPassword } = require("../../utils/passwordHashing");
@@ -11,7 +10,6 @@ const login = async (req, res) => {
     if (!user) {
       return res.status(401).json({ message: "Invalid username." });
     }
-
     const isPasswordMatch = await verifyPassword(password, user.password);
     if (!isPasswordMatch) {
       res.status(401).json({ message: "Invalid password." });
@@ -20,11 +18,12 @@ const login = async (req, res) => {
   
     const token = jwt.sign(
       { id: user._id },
-      process.env.JWT_SECRET_KEY
+      process.env.AUTH_SECRET_KEY
     );
     res.json({
+      message: "User logged in successfully",
       token,
-      id: user.id,
+      id: user._id,
     });
   } catch (error) {
     console.error("Error in login:", error);

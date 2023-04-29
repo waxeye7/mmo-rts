@@ -1,10 +1,10 @@
 export default async (_to, _from, next) => {
-  const token = sessionStorage.getItem("jwt");
+  const token = sessionStorage.getItem("token");
   if (!token) {
     return next("/login");
   }
 
-  const response = await fetch(`${import.meta.env.VITE_API_URL}users/me`, {
+  const response = await fetch(`http://localhost:3000/users/me`, {
     method: "GET",
     headers: { Authorization: `Bearer ${token}` },
   });
