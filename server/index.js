@@ -97,6 +97,28 @@ io.on('connection', (socket) => {
   });
 });
 
+
+
+// Handle server shutdown
+const gracefulShutdown = () => {
+  console.log("Server is shutting down...");
+
+  // Send the 'serverRestart' event to all connected clients
+  io.sockets.emit('serverRestart');
+
+  // Close the server
+  server.close(() => {
+    console.log("Server has been closed.");
+    process.exit();
+  });
+};
+
+// Listen for server shutdown signals
+process.on('SIGINT', gracefulShutdown);
+process.on('SIGTERM', gracefulShutdown);
+
+
+
 app.use(bodyParser.json());
 // User routes
 const UsersRoute = require("./routes/users.js");
@@ -118,7 +140,14 @@ server.listen(port, () => {
 
 const processActions = async () => {
   for (const action of actionsQueue) {
-    if (action.type === 'place') {
+    const { username, userId } = action.payload;
+    const user = await User.findById(userId);
+    if (!user || user.username !== username) {
+      console.log(`Mismatch between username and userId: ${username}, ${userId}`);
+      continue;
+    }
+
+    if (action.type === 'build') {
       const { x, y, structureType, username, userId } = action.payload;
       
       if(checkIfPlayerCanBuildThisBuilding(username, structureType)) {
@@ -127,7 +156,42 @@ const processActions = async () => {
       }
       
       decrementActions(userId);
-      board[y][x].building = { structureType, owner: username, hits: 5000 };
+      let hits = 5000;
+      if(structureType === "structureTower") hits = 3000;
+      board[y][x].building = { structureType, owner: username, hits: hits };
+    }
+    else if(action.type === "move") {
+      const { x, y, username, unit, userId } = action.payload;
+
+      if(checkIfCellIsOccupied(x,y)) {console.log("cell is occupied"); continue;}
+
+      decrementActions(userId);
+      board[unit.pos.y][unit.pos.x].unit = null;
+      board[y][x].unit = unit;
+      unit.pos.x = x;
+      unit.pos.y = y;
+    }
+
+    else if(action.type === "tower shoot") {
+      const { x, y, targetX, targetY, username, userId } = action.payload;
+      const tower = board[y][x].building;
+      const target = board[targetY][targetX] || board[targetY][targetX];
+      if(!target) continue;
+      if(!tower) continue;
+      if(tower.owner !== username) continue;
+      if(tower.structureType !== "structureTower") continue;
+      if(tower.hits <= 0) {
+        board[y][x].building = null;
+        continue;
+      }
+      if(target.unit) target.unit.hits -= 20;
+      if(target.building) target.building.hits -= 20;
+      if(target.unit && target.unit.hits <= 0) {
+        board[targetY][targetX].unit = null;
+      }
+      if(target.building && target.building.hits <= 0) {
+        board[targetY][targetX].building = null;
+      }
     }
   }
 
@@ -158,11 +222,17 @@ const handleAction = async (socket, action) => {
 
     if(userAttempts[userId]) {
       if (userAttempts[userId] >= 13) {
-        // Log the user out by emitting a 'forceLogout' event
-        userSockets[userId].emit('forceLogout');
+        if(userSockets[userId]) {
+          // Log the user out by emitting a 'forceLogout' event
+          userSockets[userId].emit('forceLogout');
+        }
+
       } else if (userAttempts[userId] >= 10) {
-        // Emit a 'warning' event to the user's client
-        userSockets[userId].emit('warning', 'You have no actions left. Continuing to try will result in being logged out.');
+        if(userSockets[userId]) {
+          // Emit a 'warning' event to the user's client
+          userSockets[userId].emit('warning', 'You have no actions left. Continuing to try will result in being logged out.');
+        }
+
       }
       return;
     }
@@ -179,6 +249,10 @@ const handleAction = async (socket, action) => {
   else {
     console.log("updated user not found. error here.")
   }
+};
+
+const checkIfCellIsOccupied = (x, y) => {
+  return board[y][x].unit || board[y][x].building || board[y][x].unit;
 };
 
 const checkIfPlayerCanBuildThisBuilding = (username, buildingType) => {
@@ -213,7 +287,7 @@ broadcastRemainingTime();
 cron.schedule('*/30 * * * * *', async () => {
 // cron.schedule('0 */12 * * *', async () => {
 
-  processActions();
+  await processActions();
   const resetSuccessful = await resetActions();
 
 
