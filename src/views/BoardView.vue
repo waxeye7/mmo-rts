@@ -19,13 +19,10 @@
 
     <div v-if="selectedCell && user" class="actions-panel">
       <h3>Actions</h3>
-      <div
-        v-if="
-          selectedCell.building &&
-          selectedCell.building.structureType === 'structureSpawn' &&
-          selectedCell.building.owner === user.username
-        "
-      >
+      <div v-if="selectedCell.building &&
+        selectedCell.building.structureType === 'structureSpawn' &&
+        selectedCell.building.owner === user.username
+        ">
         <div @click="handleAction('spawn worker')" class="button">
           Spawn Worker
         </div>
@@ -34,34 +31,25 @@
         </div>
       </div>
 
-      <div
-        v-if="
-          selectedCell.building &&
-          selectedCell.building.structureType === 'structureTower' &&
-          selectedCell.building.owner === user.username
-        "
-      >
+      <div v-if="selectedCell.building &&
+        selectedCell.building.structureType === 'structureTower' &&
+        selectedCell.building.owner === user.username
+        ">
         <div @click="handleAction('tower shoot')" class="button">
           Tower Shoot
         </div>
       </div>
 
-      <div
-        v-if="
-          selectedCell.unit &&
-          selectedCell.unit.owner === user.username &&
-          selectedCell.unit.unitType === 'worker'
-        "
-      >
+      <div v-if="selectedCell.unit &&
+        selectedCell.unit.owner === user.username &&
+        selectedCell.unit.unitType === 'worker'
+        ">
         <div @click="handleAction('move worker')" class="button">Move</div>
         <div @click="handleAction('worker mine')" class="button">Mine</div>
       </div>
 
-      <div
-        v-if="
-          !selectedCell.unit && !selectedCell.resource && !selectedCell.building
-        "
-      >
+      <div v-if="!selectedCell.unit && !selectedCell.resource && !selectedCell.building
+        ">
         <div @click="handleAction('build spawn')" class="button">
           Build Spawn
         </div>
@@ -96,11 +84,7 @@
         </div>
         <div class="info-item">
           <span>Hits:</span>
-          <span>{{ selectedCell.building.hits }}</span>
-        </div>
-        <div class="info-item">
-          <span>Max Hits:</span>
-          <span>{{ selectedCell.building.hitsMax }}</span>
+          <span>{{ selectedCell.building.hits }}/{{ selectedCell.building.hitsMax }}</span>
         </div>
       </div>
       <div v-if="selectedCell.unit">
@@ -114,11 +98,7 @@
         </div>
         <div class="info-item">
           <span>Hits:</span>
-          <span>{{ selectedCell.unit.hits }}</span>
-        </div>
-        <div class="info-item">
-          <span>Max Hits:</span>
-          <span>{{ selectedCell.unit.hitsMax }}</span>
+          <span>{{ selectedCell.unit.hits }}/{{ selectedCell.unit.hitsMax }}</span>
         </div>
       </div>
       <div v-if="selectedCell.resource">
@@ -131,37 +111,25 @@
     </div>
 
     <div class="outer-container">
-      <div
-        class="scroll-container"
-        @wheel="handleWheel"
-        @mousedown="startDrag"
-        @mouseup="endDrag"
-        @mouseleave="endDrag"
-        @mousemove="moveCamera"
-      >
-        <div
-          class="board-container"
-          :style="{
+      <div class="scroll-container" @wheel="handleWheel" @mousedown="startDrag" @mouseup="endDrag" @mouseleave="endDrag"
+        @mousemove="moveCamera">
+        <div class="board-container" :style="{
             transform: 'scale(' + zoom + ')',
             transformOrigin: originX + 'px ' + originY + 'px',
-          }"
-        >
-          <div v-for="(row, y) in board" :key="y" style="display: flex">
-            <div v-for="(cell, x) in row" :key="x">
-              <button
-                @click="
-                  if (
-                    !selectedCell ||
-                    selectedCell.x !== cell.x ||
-                    selectedCell.y !== cell.y
-                  ) {
-                    actionPopup ? selectTargetCell(cell) : selectCell(cell);
-                  } else if (!actionPopup) {
-                    selectedCell = null;
-                  } else if (actionPopup) sendAlert('cannot target itself');
-                "
-                :style="getCellStyle(cell)"
-              ></button>
+          }">
+          <div v-for="(row, y) in   board  " :key="y" style="display: flex">
+            <div v-for="(cell, x) in   row  " :key="x">
+              <button @click="
+                                              if (
+                !selectedCell ||
+                selectedCell.x !== cell.x ||
+                selectedCell.y !== cell.y
+              ) {
+                actionPopup ? selectTargetCell(cell) : selectCell(cell);
+              } else if (!actionPopup) {
+                selectedCell = null;
+              } else if (actionPopup) sendAlert('cannot target itself');
+                                            " :style="getCellStyle(cell)"></button>
             </div>
           </div>
         </div>
@@ -576,6 +544,7 @@ export default {
 .selected {
   border: 2px solid red;
 }
+
 .actions-panel {
   position: absolute;
   right: 240px;
@@ -586,6 +555,7 @@ export default {
   padding: 16px;
   z-index: 2;
 }
+
 .info-panel {
   position: absolute;
   right: 0;
@@ -596,11 +566,13 @@ export default {
   padding: 16px;
   z-index: 2;
 }
+
 .info-item {
   display: flex;
   justify-content: space-between;
   align-items: center;
 }
+
 .outer-container {
   position: relative;
   overflow: hidden;
@@ -617,6 +589,7 @@ export default {
   height: 100%;
   overflow: auto;
 }
+
 .board-container {
   position: relative;
   transform-origin: top left;

@@ -158,7 +158,7 @@ const processActions = async () => {
       decrementActions(userId);
       let hits = 5000;
       if(structureType === "structureTower") hits = 3000;
-      board[y][x].building = { structureType, owner: username, hits: hits, hitsMax: hits };
+      board[y][x].building = { structureType, owner: username, hits: hits, hitsMax: hits, damage:100 };
     }
     else if(action.type === "tower shoot") {
       const { x, y, targetX, targetY, username, userId } = action.payload;
@@ -168,8 +168,8 @@ const processActions = async () => {
       if(!tower) continue;
       if(tower.owner !== username) continue;
       if(tower.structureType !== "structureTower") continue;
-      if(target.unit) target.unit.hits -= 20;
-      if(target.building) target.building.hits -= 20;
+      if(target.unit) target.unit.hits -= tower.damage;
+      if(target.building) target.building.hits -= tower.damage;
     }
     else if(action.type === "spawn worker") {
       const { x, y, targetX, targetY, username, userId } = action.payload;
@@ -189,6 +189,7 @@ const processActions = async () => {
         owner: username,
         hits: 500,
         hitsMax: 500,
+        damage: 12,
       }
     }    
   }
