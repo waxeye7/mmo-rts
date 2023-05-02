@@ -139,7 +139,7 @@ server.listen(port, () => {
 });
 
 const processActions = async () => {
-  for (const action of actionsQueue) {
+  for (const action of nonMoveActionsQueue) {
     const { username, userId } = action.payload;
     const user = await User.findById(userId);
     if (!user || user.username !== username) {
@@ -158,51 +158,67 @@ const processActions = async () => {
       decrementActions(userId);
       let hits = 5000;
       if(structureType === "structureTower") hits = 3000;
-      board[y][x].building = { structureType, owner: username, hits: hits };
+      board[y][x].building = { structureType, owner: username, hits: hits, hitsMax: hits };
     }
-    else if(action.type === "move") {
-      const { x, y, username, unit, userId } = action.payload;
-
-      if(checkIfCellIsOccupied(x,y)) {console.log("cell is occupied"); continue;}
-
-      decrementActions(userId);
-      board[unit.pos.y][unit.pos.x].unit = null;
-      board[y][x].unit = unit;
-      unit.pos.x = x;
-      unit.pos.y = y;
-    }
-
     else if(action.type === "tower shoot") {
       const { x, y, targetX, targetY, username, userId } = action.payload;
       const tower = board[y][x].building;
-      const target = board[targetY][targetX] || board[targetY][targetX];
+      const target = board[targetY][targetX];
       if(!target) continue;
       if(!tower) continue;
       if(tower.owner !== username) continue;
       if(tower.structureType !== "structureTower") continue;
-      if(tower.hits <= 0) {
-        board[y][x].building = null;
-        continue;
-      }
       if(target.unit) target.unit.hits -= 20;
       if(target.building) target.building.hits -= 20;
-      if(target.unit && target.unit.hits <= 0) {
-        board[targetY][targetX].unit = null;
+    }
+    else if(action.type === "spawn worker") {
+      const { x, y, targetX, targetY, username, userId } = action.payload;
+      const spawn = board[y][x].building;
+      const target = board[targetY][targetX];
+      if(!target) continue;
+      if(!spawn) continue;
+      if(spawn.owner !== username) continue;
+      if(spawn.structureType !== "structureSpawn") continue;
+      if(target.unit || target.building || target.resource) continue;
+      target.unit = {
+        unitType: "worker",
+        pos: {
+          x: targetX,
+          y: targetY
+        },
+        owner: username,
+        hits: 500,
+        hitsMax: 500,
       }
-      if(target.building && target.building.hits <= 0) {
-        board[targetY][targetX].building = null;
-      }
+    }    
+  }
+  nonMoveActionsQueue = [];
+
+  for (const action of moveActionsQueue) {
+    if(action.type === "move worker") {
+      const { x, y, targetX, targetY, username, userId } = action.payload;
+      const worker = board[y][x].unit;
+      const target = board[targetY][targetX];
+      if(!worker) continue;
+      if(!target) continue;
+      if(worker.unitType !== "worker") continue;
+      if(worker.owner !== username) continue;
+      if(target.unit || target.building || target.resource) continue;
+      worker.pos.x = targetX;
+      worker.pos.y = targetY;
+      board[y][x].unit = null;
+      board[targetY][targetX].unit = worker;
     }
   }
+  moveActionsQueue = [];
+
 
   // Save the updated board state to the database
   await saveBoardState(board);
 
+  
   // Send the updated board state to all connected clients
   io.sockets.emit('updateBoard', board);
-
-  // Clear the actions queue
-  actionsQueue = [];
 };
 
 
@@ -239,12 +255,14 @@ const handleAction = async (socket, action) => {
   }
 
   // If the user has actions left, proceed with the action and reset the attempts
-  userAttempts[userId] = 0;
-
   let updatedUser = await decrementActions(userId);
   if(updatedUser) {
     socket.emit('updateUser', updatedUser);
-    actionsQueue.push(action);
+    if (action.type === 'move worker') {
+      moveActionsQueue.push(action);
+    } else {
+      nonMoveActionsQueue.push(action);
+    }
   }
   else {
     console.log("updated user not found. error here.")
@@ -269,7 +287,8 @@ const broadcastRemainingTime = () => {
 
 const userSockets = {};
 const userAttempts = {};
-let actionsQueue = [];
+let moveActionsQueue = [];
+let nonMoveActionsQueue = [];
 let nextTaskTimestamp;
 broadcastRemainingTime();
 

@@ -26,8 +26,12 @@
           selectedCell.building.owner === user.username
         "
       >
-        <div class="button">Spawn Worker</div>
-        <div class="button">Spawn Axeman</div>
+        <div @click="handleAction('spawn worker')" class="button">
+          Spawn Worker
+        </div>
+        <div @click="handleAction('spawn axeman')" class="button">
+          Spawn Axeman
+        </div>
       </div>
 
       <div
@@ -94,6 +98,10 @@
           <span>Hits:</span>
           <span>{{ selectedCell.building.hits }}</span>
         </div>
+        <div class="info-item">
+          <span>Max Hits:</span>
+          <span>{{ selectedCell.building.hitsMax }}</span>
+        </div>
       </div>
       <div v-if="selectedCell.unit">
         <div class="info-item">
@@ -107,6 +115,10 @@
         <div class="info-item">
           <span>Hits:</span>
           <span>{{ selectedCell.unit.hits }}</span>
+        </div>
+        <div class="info-item">
+          <span>Max Hits:</span>
+          <span>{{ selectedCell.unit.hitsMax }}</span>
         </div>
       </div>
       <div v-if="selectedCell.resource">
@@ -137,7 +149,17 @@
           <div v-for="(row, y) in board" :key="y" style="display: flex">
             <div v-for="(cell, x) in row" :key="x">
               <button
-                @click="actionPopup ? selectTargetCell(cell) : selectCell(cell)"
+                @click="
+                  if (
+                    !selectedCell ||
+                    selectedCell.x !== cell.x ||
+                    selectedCell.y !== cell.y
+                  ) {
+                    actionPopup ? selectTargetCell(cell) : selectCell(cell);
+                  } else if (!actionPopup) {
+                    selectedCell = null;
+                  } else if (actionPopup) sendAlert('cannot target itself');
+                "
                 :style="getCellStyle(cell)"
               ></button>
             </div>
@@ -195,52 +217,95 @@ export default {
           },
         });
       } else if (action === "move worker") {
-        this.sendAction({
-          type: "move",
-          payload: {
-            x: this.selectedCell.x,
-            y: this.selectedCell.y,
-            username: this.user.username,
-            userId: this.user._id,
-          },
-        });
-      } else if (action === "worker mine") {
-        this.sendAction({
-          type: "mine",
-          payload: {
-            x: this.selectedCell.x,
-            y: this.selectedCell.y,
-            username: this.user.username,
-            userId: this.user._id,
-          },
-        });
-      } else if (action === "tower shoot") {
         if (!this.actionPopup || !this.selectedActionType)
           this.onActionClick(action);
         else {
+          if (this.isValidActionTarget(this.targetCell)) {
+            this.sendAction({
+              type: "move worker",
+              payload: {
+                x: this.selectedCell.x,
+                y: this.selectedCell.y,
+                targetX: this.targetCell.x,
+                targetY: this.targetCell.y,
+                username: this.user.username,
+                userId: this.user._id,
+              },
+            });
+            this.actionPopup = false;
+            this.selectedActionType = null;
+          } else {
+            alert("Invalid Location");
+          }
+        }
+      } else if (action === "worker mine") {
+        if (this.isValidActionTarget(this.targetCell)) {
           this.sendAction({
-            type: "tower shoot",
+            type: "mine",
             payload: {
               x: this.selectedCell.x,
               y: this.selectedCell.y,
-              targetX: this.targetCell.x,
-              targetY: this.targetCell.y,
               username: this.user.username,
               userId: this.user._id,
             },
           });
-          this.actionPopup = false;
-          this.selectedActionType = null;
+        } else {
+          alert("Invalid Location");
+        }
+      } else if (action === "tower shoot") {
+        if (!this.actionPopup || !this.selectedActionType)
+          this.onActionClick(action);
+        else {
+          if (this.isValidActionTarget(this.targetCell)) {
+            this.sendAction({
+              type: "tower shoot",
+              payload: {
+                x: this.selectedCell.x,
+                y: this.selectedCell.y,
+                targetX: this.targetCell.x,
+                targetY: this.targetCell.y,
+                username: this.user.username,
+                userId: this.user._id,
+              },
+            });
+            this.actionPopup = false;
+            this.selectedActionType = null;
+          } else {
+            alert("Invalid Location");
+          }
+        }
+      } else if (action === "spawn worker") {
+        if (!this.actionPopup || !this.selectedActionType)
+          this.onActionClick(action);
+        else {
+          if (this.isValidActionTarget(this.targetCell)) {
+            this.sendAction({
+              type: "spawn worker",
+              payload: {
+                x: this.selectedCell.x,
+                y: this.selectedCell.y,
+                targetX: this.targetCell.x,
+                targetY: this.targetCell.y,
+                username: this.user.username,
+                userId: this.user._id,
+              },
+            });
+            this.actionPopup = false;
+            this.selectedActionType = null;
+          } else {
+            alert("Invalid Location");
+          }
         }
       }
     },
     onActionClick(actionType) {
       this.actionPopup = true;
       this.selectedActionType = actionType;
+      this.targetCell = null;
     },
     selectTargetCell(cell) {
       this.targetCell = cell;
-      this.handleAction("tower shoot");
+      this.handleAction(this.selectedActionType);
     },
     cancelTargetSelection() {
       this.actionPopup = false;
@@ -297,6 +362,13 @@ export default {
           backgroundSize: "cover",
         };
       }
+      if (cell.resource && cell.resource.resourceType === "gold") {
+        return {
+          ...baseStyle,
+          backgroundImage: 'url("/images/gold.avif")',
+          backgroundSize: "cover",
+        };
+      }
       // Add more conditions for other structure types here
 
       return baseStyle;
@@ -306,11 +378,24 @@ export default {
         return false;
       }
       if (
-        this.selectedActionType === "move" ||
         this.selectedActionType === "mine" ||
         this.selectedActionType === "build"
       ) {
         return this.isInRange(this.selectedCell, cell, 1);
+      } else if (this.selectedActionType === "move worker") {
+        return (
+          !cell.unit &&
+          !cell.building &&
+          !cell.resource &&
+          this.isInRange(this.selectedCell, cell, 1)
+        );
+      } else if (this.selectedActionType === "spawn worker") {
+        return (
+          !cell.unit &&
+          !cell.resource &&
+          !cell.building &&
+          this.isInRange(this.selectedCell, cell, 1)
+        );
       } else if (this.selectedActionType === "tower shoot") {
         return (
           this.isInRange(this.selectedCell, cell, 3) &&
@@ -321,6 +406,9 @@ export default {
       }
     },
     isInRange(cell1, cell2, range) {
+      if (!cell1 || !cell2) {
+        return false;
+      }
       const xDistance = Math.abs(cell1.x - cell2.x);
       const yDistance = Math.abs(cell1.y - cell2.y);
 
@@ -364,7 +452,7 @@ export default {
       if (event.deltaY < 0) {
         this.zoom += 0.1;
       } else {
-        if (this.zoom > 0.5) {
+        if (this.zoom > 0.2) {
           this.zoom -= 0.1;
         }
       }
@@ -396,6 +484,9 @@ export default {
 
       this.dragStartX = event.clientX;
       this.dragStartY = event.clientY;
+    },
+    sendAlert(message) {
+      alert(message);
     },
   },
   beforeUnmount() {
@@ -490,7 +581,7 @@ export default {
   right: 240px;
   top: 0;
   width: 240px;
-  background-color: rgba(255, 255, 255, 0.8);
+  background-color: rgba(255, 255, 255, 1);
   border-right: 1px solid #ccc;
   padding: 16px;
   z-index: 2;
@@ -500,7 +591,7 @@ export default {
   right: 0;
   top: 0;
   width: 240px;
-  background-color: rgba(255, 255, 255, 0.8);
+  background-color: rgba(255, 255, 255, 1);
   border-left: 1px solid #ccc;
   padding: 16px;
   z-index: 2;
