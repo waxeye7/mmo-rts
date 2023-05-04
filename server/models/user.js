@@ -12,7 +12,11 @@ const UserSchema = new mongoose.Schema({
     actions: {
         type: Number,
         required: true,
-    }
+    },
+    resources: {
+        type: Object,
+        required: true,
+    },
 });
 
 const User = mongoose.model('User', UserSchema);

@@ -17,6 +17,10 @@ const signup = async (req, res) => {
       username,
       password: hashedPassword,
       actions: 10,
+      resources: {
+        gold: 0,
+        wood: 0,
+      }
     });
 
     await newUser.save();
