@@ -1,0 +1,1 @@
+make yellow effect on move on cell with unit because the action could be cancelled
