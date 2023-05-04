@@ -140,86 +140,212 @@ server.listen(port, () => {
 
 const processActions = async () => {
   for (const action of nonMoveActionsQueue) {
-    const { username, userId } = action.payload;
-    const user = await User.findById(userId);
-    if (!user || user.username !== username) {
-      console.log(`Mismatch between username and userId: ${username}, ${userId}`);
-      continue;
-    }
-
     if (action.type === 'build') {
-      const { x, y, structureType, username, userId } = action.payload;
-      
-      if(checkIfPlayerCanBuildThisBuilding(username, structureType)) {
-        console.log(`${username} can't build ${structureType}`);
-        continue;
-      }
-      
-      decrementActions(userId);
-      let hits = 5000;
-      if(structureType === "structureTower") hits = 3000;
-      board[y][x].building = { structureType, owner: username, hits: hits, hitsMax: hits, damage:100 };
+      await processBuildAction(action);
+    } else if (action.type === "tower shoot") {
+      await processTowerShootAction(action);
+    } else if (action.type === "spawn worker") {
+      await processSpawnWorkerAction(action);
     }
-    else if(action.type === "tower shoot") {
-      const { x, y, targetX, targetY, username, userId } = action.payload;
-      const tower = board[y][x].building;
-      const target = board[targetY][targetX];
-      if(!target) continue;
-      if(!tower) continue;
-      if(tower.owner !== username) continue;
-      if(tower.structureType !== "structureTower") continue;
-      if(target.unit) target.unit.hits -= tower.damage;
-      if(target.building) target.building.hits -= tower.damage;
+    else if(action.type === "spawn axeman"){
+      await processSpawnAxemanAction(action);
     }
-    else if(action.type === "spawn worker") {
-      const { x, y, targetX, targetY, username, userId } = action.payload;
-      const spawn = board[y][x].building;
-      const target = board[targetY][targetX];
-      if(!target) continue;
-      if(!spawn) continue;
-      if(spawn.owner !== username) continue;
-      if(spawn.structureType !== "structureSpawn") continue;
-      if(target.unit || target.building || target.resource) continue;
-      target.unit = {
-        unitType: "worker",
-        pos: {
-          x: targetX,
-          y: targetY
-        },
-        owner: username,
-        hits: 500,
-        hitsMax: 500,
-        damage: 12,
-      }
-    }    
+    else if(action.type === "worker mine") {
+      await processWorkerMineAction(action);
+    }
   }
   nonMoveActionsQueue = [];
 
   for (const action of moveActionsQueue) {
-    if(action.type === "move worker") {
-      const { x, y, targetX, targetY, username, userId } = action.payload;
-      const worker = board[y][x].unit;
-      const target = board[targetY][targetX];
-      if(!worker) continue;
-      if(!target) continue;
-      if(worker.unitType !== "worker") continue;
-      if(worker.owner !== username) continue;
-      if(target.unit || target.building || target.resource) continue;
-      worker.pos.x = targetX;
-      worker.pos.y = targetY;
-      board[y][x].unit = null;
-      board[targetY][targetX].unit = worker;
+    if (action.type === "move worker") {
+      await processMoveWorkerAction(action);
+    }
+    else if(action.type === "move axeman"){
+      await processMoveAxemanAction(action);
     }
   }
   moveActionsQueue = [];
 
-
   // Save the updated board state to the database
   await saveBoardState(board);
 
-  
   // Send the updated board state to all connected clients
   io.sockets.emit('updateBoard', board);
+};
+
+const processBuildAction = async (action) => {
+  const { x, y, structureType, username, userId } = action.payload;
+  if (!(await isValidUser(username, userId))) {
+    return;
+  }
+  if (checkIfPlayerCanBuildThisBuilding(username, structureType)) {
+    console.log(`${username} can't build ${structureType}`);
+    return;
+  }
+  
+
+  decrementActions(userId);
+  let hits = 5000;
+  if (structureType === "structureTower") hits = 3000;
+  board[y][x].building = { structureType, owner: username, hits: hits, hitsMax: hits, damage: 100 };
+};
+
+const processTowerShootAction = async (action) => {
+  const { x, y, targetX, targetY, username, userId } = action.payload;
+
+  if (!(await isValidUser(username, userId))) {
+    return;
+  }
+
+  const tower = board[y][x].building;
+  const target = board[targetY][targetX];
+  if(!target) return;
+  if(!tower) return;
+  if(tower.owner !== username) return;
+  if(tower.structureType !== "structureTower") return;
+  if(target.unit) target.unit.hits -= tower.damage;
+  if(target.building) target.building.hits -= tower.damage;
+};
+
+const processSpawnWorkerAction = async (action) => {
+  const { x, y, targetX, targetY, username, userId } = action.payload;
+
+
+  if (!(await isValidUser(username, userId))) {
+    return;
+  }
+
+  const spawn = board[y][x].building;
+  const target = board[targetY][targetX];
+  if(!target) return;
+  if(!spawn) return;
+  if(spawn.owner !== username) return;
+  if(spawn.structureType !== "structureSpawn") return;
+  if(checkIfCellIsOccupied(targetX,targetY)) return;
+  target.unit = {
+    unitType: "worker",
+    pos: {
+      x: targetX,
+      y: targetY
+    },
+    owner: username,
+    hits: 500,
+    hitsMax: 500,
+    damage: 12,
+  }
+
+};
+
+const processSpawnAxemanAction = async (action) => {
+  const { x, y, targetX, targetY, username, userId } = action.payload;
+
+
+  if (!(await isValidUser(username, userId))) {
+    return;
+  }
+
+  const spawn = board[y][x].building;
+  const target = board[targetY][targetX];
+  if(!target) return;
+  if(!spawn) return;
+  if(spawn.owner !== username) return;
+  if(spawn.structureType !== "structureSpawn") return;
+  if(checkIfCellIsOccupied(targetX,targetY)) return;
+  target.unit = {
+    unitType: "axeman",
+    pos: {
+      x: targetX,
+      y: targetY
+    },
+    owner: username,
+    hits: 1000,
+    hitsMax: 1000,
+    damage: 50,
+  }
+
+};
+
+const processWorkerMineAction = async (action) => {
+  const { x, y, targetX, targetY, username, userId } = action.payload;
+
+  if (!(await isValidUser(username, userId))) {
+    return;
+  }
+  const worker = board[y][x].unit;
+  const target = board[targetY][targetX];
+  if(!worker) return;
+  if(!target) return;
+  if(worker.unitType !== "worker") return;
+  if(worker.owner !== username) return;
+  if(!target.resource) return;
+
+  const goldToAdd = 100;
+  console.log('here')
+  // Update the user's resources.gold property in the database
+  const updatedUser = await User.findByIdAndUpdate(
+    userId,
+    { $inc: { "resources.gold": goldToAdd } },
+    { new: true, useFindAndModify: false }
+  );
+
+  // Check if the user was updated successfully
+  if (!updatedUser) {
+    console.error(`Failed to update resources for user: ${username}, ${userId}`);
+    return;
+  }
+
+  // Send the updated user data to the client
+  if (userSockets[userId]) {
+    userSockets[userId].emit('updateUser', updatedUser);
+  }
+};
+
+const processMoveWorkerAction = async (action) => {
+  const { x, y, targetX, targetY, username, userId } = action.payload;
+
+  if (!(await isValidUser(username, userId))) {
+    return;
+  }
+  const worker = board[y][x].unit;
+  const target = board[targetY][targetX];
+  if(!worker) return;
+  if(!target) return;
+  if(worker.unitType !== "worker") return;
+  if(worker.owner !== username) return;
+  if(checkIfCellIsOccupied(targetX,targetY)) return;
+  worker.pos.x = targetX;
+  worker.pos.y = targetY;
+  board[y][x].unit = null;
+  board[targetY][targetX].unit = worker;
+};
+
+const processMoveAxemanAction = async (action) => {
+  const { x, y, targetX, targetY, username, userId } = action.payload;
+  if (!(await isValidUser(username, userId))) {
+    return;
+  }
+  const axeman = board[y][x].unit;
+  const target = board[targetY][targetX];
+  if(!axeman) return;
+  if(!target) return;
+  if(axeman.unitType !== "axeman") return;
+  if(axeman.owner !== username) return;
+  if(checkIfCellIsOccupied(targetX,targetY)) return;
+  axeman.pos.x = targetX;
+  axeman.pos.y = targetY;
+  board[y][x].unit = null;
+  board[targetY][targetX].unit = axeman;
+};
+
+
+
+const isValidUser = async (username, userId) => {
+  const user = await User.findById(userId);
+  if (!user || user.username !== username) {
+    console.log(`Mismatch between username and userId: ${username}, ${userId}`);
+    return false;
+  }
+  return true;
 };
 
 
@@ -259,7 +385,7 @@ const handleAction = async (socket, action) => {
   let updatedUser = await decrementActions(userId);
   if(updatedUser) {
     socket.emit('updateUser', updatedUser);
-    if (action.type === 'move worker') {
+    if (action.type === 'move worker' || action.type === 'move axeman') {
       moveActionsQueue.push(action);
     } else {
       nonMoveActionsQueue.push(action);
