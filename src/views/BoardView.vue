@@ -15,14 +15,21 @@
       </h1>
       <h1 v-if="user" class="mr-4">Your actions: {{ user.actions }}</h1>
       <h1 v-if="user" class="mr-4">Logged in as: {{ user.username }}</h1>
+      <h1 v-if="user && user.resources" class="mr-4">
+        Your gold: {{ user.resources.gold }}
+      </h1>
+      <h1 @click="logout" class="logout">Log Out</h1>
     </div>
 
     <div v-if="selectedCell && user" class="actions-panel">
       <h3>Actions</h3>
-      <div v-if="selectedCell.building &&
-        selectedCell.building.structureType === 'structureSpawn' &&
-        selectedCell.building.owner === user.username
-        ">
+      <div
+        v-if="
+          selectedCell.building &&
+          selectedCell.building.structureType === 'structureSpawn' &&
+          selectedCell.building.owner === user.username
+        "
+      >
         <div @click="handleAction('spawn worker')" class="button">
           Spawn Worker
         </div>
@@ -31,25 +38,45 @@
         </div>
       </div>
 
-      <div v-if="selectedCell.building &&
-        selectedCell.building.structureType === 'structureTower' &&
-        selectedCell.building.owner === user.username
-        ">
+      <div
+        v-if="
+          selectedCell.building &&
+          selectedCell.building.structureType === 'structureTower' &&
+          selectedCell.building.owner === user.username
+        "
+      >
         <div @click="handleAction('tower shoot')" class="button">
           Tower Shoot
         </div>
       </div>
 
-      <div v-if="selectedCell.unit &&
-        selectedCell.unit.owner === user.username &&
-        selectedCell.unit.unitType === 'worker'
-        ">
+      <div
+        v-if="
+          selectedCell.unit &&
+          selectedCell.unit.owner === user.username &&
+          selectedCell.unit.unitType === 'worker'
+        "
+      >
         <div @click="handleAction('move worker')" class="button">Move</div>
         <div @click="handleAction('worker mine')" class="button">Mine</div>
       </div>
 
-      <div v-if="!selectedCell.unit && !selectedCell.resource && !selectedCell.building
-        ">
+      <div
+        v-if="
+          selectedCell.unit &&
+          selectedCell.unit.owner === user.username &&
+          selectedCell.unit.unitType === 'axeman'
+        "
+      >
+        <div @click="handleAction('move axeman')" class="button">Move</div>
+        <div @click="handleAction('axeman attack')" class="button">Attack</div>
+      </div>
+
+      <div
+        v-if="
+          !selectedCell.unit && !selectedCell.resource && !selectedCell.building
+        "
+      >
         <div @click="handleAction('build spawn')" class="button">
           Build Spawn
         </div>
@@ -84,7 +111,15 @@
         </div>
         <div class="info-item">
           <span>Hits:</span>
-          <span>{{ selectedCell.building.hits }}/{{ selectedCell.building.hitsMax }}</span>
+          <span
+            >{{ selectedCell.building.hits }}/{{
+              selectedCell.building.hitsMax
+            }}</span
+          >
+        </div>
+        <div class="info-item">
+          <span>Damage:</span>
+          <span>{{ selectedCell.building.damage }}</span>
         </div>
       </div>
       <div v-if="selectedCell.unit">
@@ -98,7 +133,13 @@
         </div>
         <div class="info-item">
           <span>Hits:</span>
-          <span>{{ selectedCell.unit.hits }}/{{ selectedCell.unit.hitsMax }}</span>
+          <span
+            >{{ selectedCell.unit.hits }}/{{ selectedCell.unit.hitsMax }}</span
+          >
+        </div>
+        <div class="info-item">
+          <span>Damage:</span>
+          <span>{{ selectedCell.unit.damage }}</span>
         </div>
       </div>
       <div v-if="selectedCell.resource">
@@ -111,25 +152,37 @@
     </div>
 
     <div class="outer-container">
-      <div class="scroll-container" @wheel="handleWheel" @mousedown="startDrag" @mouseup="endDrag" @mouseleave="endDrag"
-        @mousemove="moveCamera">
-        <div class="board-container" :style="{
+      <div
+        class="scroll-container"
+        @wheel="handleWheel"
+        @mousedown="startDrag"
+        @mouseup="endDrag"
+        @mouseleave="endDrag"
+        @mousemove="moveCamera"
+      >
+        <div
+          class="board-container"
+          :style="{
             transform: 'scale(' + zoom + ')',
             transformOrigin: originX + 'px ' + originY + 'px',
-          }">
-          <div v-for="(row, y) in   board  " :key="y" style="display: flex">
-            <div v-for="(cell, x) in   row  " :key="x">
-              <button @click="
-                                              if (
-                !selectedCell ||
-                selectedCell.x !== cell.x ||
-                selectedCell.y !== cell.y
-              ) {
-                actionPopup ? selectTargetCell(cell) : selectCell(cell);
-              } else if (!actionPopup) {
-                selectedCell = null;
-              } else if (actionPopup) sendAlert('cannot target itself');
-                                            " :style="getCellStyle(cell)"></button>
+          }"
+        >
+          <div v-for="(row, y) in board" :key="y" style="display: flex">
+            <div v-for="(cell, x) in row" :key="x">
+              <button
+                @click="
+                  if (
+                    !selectedCell ||
+                    selectedCell.x !== cell.x ||
+                    selectedCell.y !== cell.y
+                  ) {
+                    actionPopup ? selectTargetCell(cell) : selectCell(cell);
+                  } else if (!actionPopup) {
+                    selectedCell = null;
+                  } else if (actionPopup) sendAlert('cannot target itself');
+                "
+                :style="getCellStyle(cell)"
+              ></button>
             </div>
           </div>
         </div>
@@ -162,110 +215,71 @@ export default {
       this.$socket.emit("action", action);
     },
     handleAction(action) {
-      if (action === "build tower") {
+      const buildAction = (structureType) => {
         this.sendAction({
           type: "build",
           payload: {
             x: this.selectedCell.x,
             y: this.selectedCell.y,
             username: this.user.username,
-            structureType: "structureTower",
+            structureType: structureType,
             userId: this.user._id,
           },
         });
-      } else if (action === "build spawn") {
-        this.sendAction({
-          type: "build",
-          payload: {
-            x: this.selectedCell.x,
-            y: this.selectedCell.y,
-            username: this.user.username,
-            structureType: "structureSpawn",
-            userId: this.user._id,
-          },
-        });
-      } else if (action === "move worker") {
-        if (!this.actionPopup || !this.selectedActionType)
+      };
+      const moveOrShootOrMineAction = (action) => {
+        if (!this.selectedActionType || this.selectedActionType !== action) {
           this.onActionClick(action);
-        else {
-          if (this.isValidActionTarget(this.targetCell)) {
-            this.sendAction({
-              type: "move worker",
-              payload: {
-                x: this.selectedCell.x,
-                y: this.selectedCell.y,
-                targetX: this.targetCell.x,
-                targetY: this.targetCell.y,
-                username: this.user.username,
-                userId: this.user._id,
-              },
-            });
-            this.actionPopup = false;
-            this.selectedActionType = null;
-          } else {
-            alert("Invalid Location");
-          }
+          return;
         }
-      } else if (action === "worker mine") {
-        if (this.isValidActionTarget(this.targetCell)) {
+        if (!this.validateTarget(this.targetCell)) return;
+        const { x: targetX, y: targetY } = this.targetCell;
+        const { x: selectedX, y: selectedY } = this.selectedCell;
+        const actionPayload = {
+          x: selectedX,
+          y: selectedY,
+          targetX,
+          targetY,
+          username: this.user.username,
+          userId: this.user._id,
+        };
+
+        if (
+          this.selectedActionType === "move worker" ||
+          this.selectedActionType === "move axeman" ||
+          this.selectedActionType === "spawn worker" ||
+          this.selectedActionType === "spawn axeman" ||
+          this.selectedActionType === "worker mine" ||
+          this.selectedActionType === "tower shoot"
+        ) {
           this.sendAction({
-            type: "mine",
-            payload: {
-              x: this.selectedCell.x,
-              y: this.selectedCell.y,
-              username: this.user.username,
-              userId: this.user._id,
-            },
+            type: this.selectedActionType,
+            payload: actionPayload,
           });
-        } else {
-          alert("Invalid Location");
         }
-      } else if (action === "tower shoot") {
-        if (!this.actionPopup || !this.selectedActionType)
-          this.onActionClick(action);
-        else {
-          if (this.isValidActionTarget(this.targetCell)) {
-            this.sendAction({
-              type: "tower shoot",
-              payload: {
-                x: this.selectedCell.x,
-                y: this.selectedCell.y,
-                targetX: this.targetCell.x,
-                targetY: this.targetCell.y,
-                username: this.user.username,
-                userId: this.user._id,
-              },
-            });
-            this.actionPopup = false;
-            this.selectedActionType = null;
-          } else {
-            alert("Invalid Location");
-          }
-        }
-      } else if (action === "spawn worker") {
-        if (!this.actionPopup || !this.selectedActionType)
-          this.onActionClick(action);
-        else {
-          if (this.isValidActionTarget(this.targetCell)) {
-            this.sendAction({
-              type: "spawn worker",
-              payload: {
-                x: this.selectedCell.x,
-                y: this.selectedCell.y,
-                targetX: this.targetCell.x,
-                targetY: this.targetCell.y,
-                username: this.user.username,
-                userId: this.user._id,
-              },
-            });
-            this.actionPopup = false;
-            this.selectedActionType = null;
-          } else {
-            alert("Invalid Location");
-          }
-        }
+
+        this.actionPopup = false;
+        this.selectedActionType = null;
+      };
+
+      const actionsMap = {
+        "build tower": () => buildAction("structureTower"),
+        "build spawn": () => buildAction("structureSpawn"),
+        "move worker": () => moveOrShootOrMineAction("move worker"),
+        "move axeman": () => moveOrShootOrMineAction("move axeman"),
+        "worker mine": () => moveOrShootOrMineAction("worker mine"),
+        "tower shoot": () => moveOrShootOrMineAction("tower shoot"),
+        "spawn worker": () => moveOrShootOrMineAction("spawn worker"),
+        "spawn axeman": () => moveOrShootOrMineAction("spawn axeman"),
+      };
+
+      if (Object.prototype.hasOwnProperty.call(actionsMap, action)) {
+        actionsMap[action]();
+      } else {
+        console.error("Invalid action type:", action);
       }
     },
+
     onActionClick(actionType) {
       this.actionPopup = true;
       this.selectedActionType = actionType;
@@ -282,95 +296,77 @@ export default {
     },
     getCellStyle(cell) {
       const baseStyle = {
-        // backgroundColor: "black",
         width: "100px",
         height: "100px",
       };
 
+      let backgroundImageUrl = "";
+
       if (this.actionPopup) {
-        if (this.isValidActionTarget(cell)) {
-          baseStyle["filter"] = "brightness(1.05)";
-        } else {
-          baseStyle["filter"] = "brightness(0.4)";
-        }
+        baseStyle["filter"] = this.validateTarget(cell)
+          ? "brightness(1.05)"
+          : "brightness(0.4)";
       }
 
       if (cell.unit || cell.building) {
-        if (
+        const ownedByUser =
           (cell.unit && cell.unit.owner === this.user.username) ||
-          (cell.building && cell.building.owner === this.user.username)
-        )
-          baseStyle.border = "2px solid green";
-        else baseStyle.border = "2px solid red";
-        // baseStyle.=
+          (cell.building && cell.building.owner === this.user.username);
+        baseStyle.border = ownedByUser ? "2px solid green" : "2px solid red";
       }
 
       if (cell === this.selectedCell) {
         baseStyle.border = "2px solid blue !important";
       }
 
-      if (cell.building && cell.building.structureType === "structureSpawn") {
-        return {
-          ...baseStyle,
-          backgroundImage: 'url("/images/hut.jpg")',
-          backgroundSize: "cover",
-        };
+      if (cell.building) {
+        if (cell.building.structureType === "structureSpawn") {
+          backgroundImageUrl = "/images/hut.jpg";
+        } else if (cell.building.structureType === "structureTower") {
+          backgroundImageUrl = "/images/tower.jpg";
+        }
+      } else if (cell.unit && cell.unit.unitType === "worker") {
+        backgroundImageUrl = "/images/worker.jpg";
+      } else if (cell.unit && cell.unit.unitType === "axeman") {
+        backgroundImageUrl = "/images/axeman.jpg";
+      } else if (cell.resource && cell.resource.resourceType === "gold") {
+        backgroundImageUrl = "/images/gold.avif";
       }
-      if (cell.building && cell.building.structureType === "structureTower") {
-        return {
-          ...baseStyle,
-          backgroundImage: 'url("/images/tower.jpg")',
-          backgroundSize: "cover",
-        };
+
+      if (backgroundImageUrl) {
+        baseStyle.backgroundImage = `url("${backgroundImageUrl}")`;
+        baseStyle.backgroundSize = "cover";
       }
-      if (cell.unit && cell.unit.unitType === "worker") {
-        return {
-          ...baseStyle,
-          backgroundImage: 'url("/images/worker.jpg")',
-          backgroundSize: "cover",
-        };
-      }
-      if (cell.resource && cell.resource.resourceType === "gold") {
-        return {
-          ...baseStyle,
-          backgroundImage: 'url("/images/gold.avif")',
-          backgroundSize: "cover",
-        };
-      }
-      // Add more conditions for other structure types here
 
       return baseStyle;
     },
-    isValidActionTarget(cell) {
-      if (!this.selectedActionType) {
+    validateTarget(cell) {
+      if (!cell || !this.selectedCell) {
         return false;
       }
-      if (
-        this.selectedActionType === "mine" ||
-        this.selectedActionType === "build"
-      ) {
-        return this.isInRange(this.selectedCell, cell, 1);
-      } else if (this.selectedActionType === "move worker") {
-        return (
-          !cell.unit &&
-          !cell.building &&
-          !cell.resource &&
-          this.isInRange(this.selectedCell, cell, 1)
-        );
-      } else if (this.selectedActionType === "spawn worker") {
-        return (
-          !cell.unit &&
-          !cell.resource &&
-          !cell.building &&
-          this.isInRange(this.selectedCell, cell, 1)
-        );
-      } else if (this.selectedActionType === "tower shoot") {
-        return (
-          this.isInRange(this.selectedCell, cell, 3) &&
-          (cell.unit || cell.building)
-        );
-      } else {
-        return true;
+
+      const isInRangeOne = this.isInRange(this.selectedCell, cell, 1);
+      const noUnitBuildingResource =
+        !cell.unit && !cell.building && !cell.resource;
+
+      switch (this.selectedActionType) {
+        case "build":
+          return isInRangeOne;
+        case "worker mine":
+          return cell.resource && isInRangeOne;
+        case "move worker":
+        case "move axeman":
+          return noUnitBuildingResource && isInRangeOne;
+        case "spawn worker":
+        case "spawn axeman":
+          return noUnitBuildingResource && !cell.building && isInRangeOne;
+        case "tower shoot":
+          return (
+            this.isInRange(this.selectedCell, cell, 3) &&
+            (cell.unit || cell.building)
+          );
+        default:
+          return false;
       }
     },
     isInRange(cell1, cell2, range) {
@@ -456,6 +452,11 @@ export default {
     sendAlert(message) {
       alert(message);
     },
+    logout() {
+      sessionStorage.removeItem("userId");
+      sessionStorage.removeItem("token");
+      this.$router.push("/login");
+    },
   },
   beforeUnmount() {
     // Remove the socket listeners
@@ -512,9 +513,7 @@ export default {
 
     this.$socket.on("forceLogout", () => {
       alert("You have been logged out due to excessive action attempts.");
-      sessionStorage.removeItem("userId");
-      sessionStorage.removeItem("token");
-      this.$router.push("/login");
+      this.logout();
     });
 
     // Request the initial board state from the server
@@ -541,6 +540,12 @@ export default {
 </script>
 
 <style scoped>
+.logout {
+  border: 2px solid black;
+  padding: 2px;
+  cursor: pointer;
+}
+
 .selected {
   border: 2px solid red;
 }
