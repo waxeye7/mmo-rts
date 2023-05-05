@@ -18,7 +18,7 @@ const signup = async (req, res) => {
       password: hashedPassword,
       actions: 10,
       resources: {
-        gold: 0,
+        gold: 1500,
         wood: 0,
       }
     });

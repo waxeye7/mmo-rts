@@ -9,6 +9,9 @@ const TaskTimestamp = require('./models/taskTimestamp');
 const loadNextTaskTimestamp = require('./controllers/taskTimestamp/loadNextTaskTimestamp');
 const decrementActions = require('./controllers/user/decrementActions');
 const User = require('./models/user');
+const canUserAffordStructure = require('./controllers/user/canUserAffordStructure');
+const updateUserGold = require('./controllers/user/updateUserGold');
+
 
 mongoose.connect(url, { useNewUrlParser: true })
 const db = mongoose.connection;
@@ -22,8 +25,6 @@ db.once('open', async () => {
 db.on('error', err => {
   console.error('connection error:', err)
 })
-
-
 
 const express = require('express');
 const http = require('http');
@@ -80,9 +81,6 @@ io.on('connection', (socket) => {
   // Listen for actions from the client
   socket.on('action', (action) => {
     handleAction(socket, action);
-
-    // Send the updated board state to all connected clients
-    io.sockets.emit('updateBoard', board);
   });
 
   // Listen for the 'loggedIn' event
@@ -91,13 +89,10 @@ io.on('connection', (socket) => {
     userSockets[userId] = socket;
   });
 
-
   socket.on('disconnect', () => {
     console.log('A user disconnected');
   });
 });
-
-
 
 // Handle server shutdown
 const gracefulShutdown = () => {
@@ -116,7 +111,6 @@ const gracefulShutdown = () => {
 // Listen for server shutdown signals
 process.on('SIGINT', gracefulShutdown);
 process.on('SIGTERM', gracefulShutdown);
-
 
 
 app.use(bodyParser.json());
@@ -138,6 +132,52 @@ server.listen(port, () => {
   console.log(`Server is running on port ${port}`);
 });
 
+const handleAction = async (socket, action) => {
+  console.log('Received action:', action);
+  const userId = action.payload.userId;
+
+  // Check if the user has actions left
+  const user = await User.findById(userId);
+
+  if (user.actions <= 0) {
+
+    console.log("User has no actions left")
+
+    // Increment userAttempts for this user or set it to 1 if it doesn't exist
+    userAttempts[userId] = (userAttempts[userId] || 0) + 1;
+
+    if(userAttempts[userId]) {
+      if (userAttempts[userId] >= 13) {
+        if(userSockets[userId]) {
+          // Log the user out by emitting a 'forceLogout' event
+          userSockets[userId].emit('forceLogout');
+        }
+
+      } else if (userAttempts[userId] >= 10) {
+        if(userSockets[userId]) {
+          // Emit a 'warning' event to the user's client
+          userSockets[userId].emit('warning', 'You have no actions left. Continuing to try will result in being logged out.');
+        }
+      }
+      return;
+    }
+  }
+
+  // If the user has actions left, proceed with the action and reset the attempts
+  let updatedUser = await decrementActions(userId);
+  if(updatedUser) {
+    socket.emit('updateUser', updatedUser);
+    if (action.type === 'move worker' || action.type === 'move axeman') {
+      moveActionsQueue.push(action);
+    } else {
+      nonMoveActionsQueue.push(action);
+    }
+  }
+  else {
+    console.log("updated user not found. error here.")
+  }
+};
+
 const processActions = async () => {
   for (const action of nonMoveActionsQueue) {
     if (action.type === 'build') {
@@ -153,8 +193,32 @@ const processActions = async () => {
     else if(action.type === "worker mine") {
       await processWorkerMineAction(action);
     }
+    else if(action.type === "axeman attack") {
+      await processAxemanAttackAction(action);
+    }
   }
   nonMoveActionsQueue = [];
+
+
+  // need to update units/buildings with hits < 0 before move actions
+  // loop through board and check hits is less than or equal to 0
+  // if so, remove unit/building from board
+  for(let y = 0; y < board.length; y++) {
+    for(let x = 0; x < board[y].length; x++) {
+      let cell = board[y][x];
+      if(cell.unit) {
+        if(cell.unit.hits <= 0) {
+          cell.unit = null;
+        }
+      }
+      else if(cell.building) {
+        if(cell.building.hits <= 0) {
+          cell.building = null;
+        }
+      }
+    }
+  }
+  
 
   for (const action of moveActionsQueue) {
     if (action.type === "move worker") {
@@ -174,20 +238,23 @@ const processActions = async () => {
 };
 
 const processBuildAction = async (action) => {
+  
   const { x, y, structureType, username, userId } = action.payload;
   if (!(await isValidUser(username, userId))) {
     return;
   }
-  if (checkIfPlayerCanBuildThisBuilding(username, structureType)) {
-    console.log(`${username} can't build ${structureType}`);
-    return;
-  }
+
+  if(!await canUserAffordStructure(userId, "structureSpawn")) return;
+
   
 
   decrementActions(userId);
   let hits = 5000;
   if (structureType === "structureTower") hits = 3000;
   board[y][x].building = { structureType, owner: username, hits: hits, hitsMax: hits, damage: 100 };
+
+  await updateUserGold(userId, structureType);
+
 };
 
 const processTowerShootAction = async (action) => {
@@ -207,6 +274,23 @@ const processTowerShootAction = async (action) => {
   if(target.building) target.building.hits -= tower.damage;
 };
 
+const processAxemanAttackAction = async (action) => {
+  const { x, y, targetX, targetY, username, userId } = action.payload;
+
+  if (!(await isValidUser(username, userId))) {
+    return;
+  }
+
+  const axeman = board[y][x].unit;
+  const target = board[targetY][targetX];
+  if(!target || !target.unit && !target.building) return;
+  if(!axeman) return;
+  if(axeman.owner !== username) return;
+  if(axeman.unitType !== "axeman") return;
+  if(target.unit) target.unit.hits -= axeman.damage;
+  if(target.building) target.building.hits -= axeman.damage;
+};
+
 const processSpawnWorkerAction = async (action) => {
   const { x, y, targetX, targetY, username, userId } = action.payload;
 
@@ -214,6 +298,7 @@ const processSpawnWorkerAction = async (action) => {
   if (!(await isValidUser(username, userId))) {
     return;
   }
+
 
   const spawn = board[y][x].building;
   const target = board[targetY][targetX];
@@ -233,7 +318,6 @@ const processSpawnWorkerAction = async (action) => {
     hitsMax: 500,
     damage: 12,
   }
-
 };
 
 const processSpawnAxemanAction = async (action) => {
@@ -279,8 +363,7 @@ const processWorkerMineAction = async (action) => {
   if(worker.owner !== username) return;
   if(!target.resource) return;
 
-  const goldToAdd = 100;
-  console.log('here')
+  const goldToAdd = 80;
   // Update the user's resources.gold property in the database
   const updatedUser = await User.findByIdAndUpdate(
     userId,
@@ -349,63 +432,13 @@ const isValidUser = async (username, userId) => {
 };
 
 
-const handleAction = async (socket, action) => {
-  console.log('Received action:', action);
-  const userId = action.payload.userId;
 
-  // Check if the user has actions left
-  const user = await User.findById(userId);
-
-  if (user.actions <= 0) {
-
-    console.log("User has no actions left")
-
-    // Increment userAttempts for this user or set it to 1 if it doesn't exist
-    userAttempts[userId] = (userAttempts[userId] || 0) + 1;
-
-    if(userAttempts[userId]) {
-      if (userAttempts[userId] >= 13) {
-        if(userSockets[userId]) {
-          // Log the user out by emitting a 'forceLogout' event
-          userSockets[userId].emit('forceLogout');
-        }
-
-      } else if (userAttempts[userId] >= 10) {
-        if(userSockets[userId]) {
-          // Emit a 'warning' event to the user's client
-          userSockets[userId].emit('warning', 'You have no actions left. Continuing to try will result in being logged out.');
-        }
-
-      }
-      return;
-    }
-  }
-
-  // If the user has actions left, proceed with the action and reset the attempts
-  let updatedUser = await decrementActions(userId);
-  if(updatedUser) {
-    socket.emit('updateUser', updatedUser);
-    if (action.type === 'move worker' || action.type === 'move axeman') {
-      moveActionsQueue.push(action);
-    } else {
-      nonMoveActionsQueue.push(action);
-    }
-  }
-  else {
-    console.log("updated user not found. error here.")
-  }
-};
 
 const checkIfCellIsOccupied = (x, y) => {
   return board[y][x].unit || board[y][x].building || board[y][x].unit;
 };
 
-const checkIfPlayerCanBuildThisBuilding = (username, buildingType) => {
-  const buildings = board.reduce((acc, row) => {
-    return acc.concat(row.filter(cell => cell.building && cell.building.owner === username));
-  }, []);
-  if(buildingType === "structureSpawn") return buildings.some(building => building.building.structureType === buildingType);
-};
+
 
 const broadcastRemainingTime = () => {
   const remainingTime = Math.floor((nextTaskTimestamp - Date.now()) / 1000);

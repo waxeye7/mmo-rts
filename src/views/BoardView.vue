@@ -18,6 +18,9 @@
       <h1 v-if="user && user.resources" class="mr-4">
         Your gold: {{ user.resources.gold }}
       </h1>
+      <!-- <h1 v-if="user && user.resources" class="mr-4">
+        Your wood: {{ user.resources.wood }}
+      </h1> -->
       <h1 @click="logout" class="logout">Log Out</h1>
     </div>
 
@@ -188,6 +191,67 @@
         </div>
       </div>
     </div>
+    <!-- Question mark button -->
+    <button class="help-button" @click="showModal">?</button>
+
+    <!-- Help modal -->
+    <div v-if="isModalVisible" class="modal" @click.self="hideModal">
+      <div class="modal-content">
+        <span @click="hideModal" class="close">&times;</span>
+        <h2>Welcome to Our MMO RTS Game!</h2>
+        <p>
+          This game is a multiplayer online real-time strategy game where
+          players build and control their own armies to conquer territories and
+          defeat their opponents. In this guide, we will introduce you to the
+          game's basic mechanics and key concepts to help you get started.
+        </p>
+        <h3>Turn Lifecycle</h3>
+        <p>Each turn in the game consists of the following phases:</p>
+        <ol>
+          <li>
+            <strong>Action Phase:</strong> During this phase, you can perform
+            various actions, such as moving units, building structures, and
+            attacking enemies. Remember, you have a limited number of actions
+            per turn, so use them wisely!
+          </li>
+          <li>
+            <strong>Resolution Phase:</strong> In this phase, all actions taken
+            during the Action Phase are resolved. This includes movement,
+            battles, and building construction. Some actions might be canceled
+            due to other events happening during the Resolution Phase.
+          </li>
+        </ol>
+        <h3>Movement and Action Cancellation</h3>
+        <p>
+          When you move a unit, keep in mind that its movement might be canceled
+          in the following scenarios:
+        </p>
+        <ul>
+          <li>If a new unit spawns at the destination cell.</li>
+          <li>If a building is constructed at the destination cell.</li>
+          <li>
+            If another unit moves to the same destination cell. In this case,
+            one of the units will be randomly chosen to occupy the cell, while
+            the other unit's movement will be canceled.
+          </li>
+        </ul>
+        <p>
+          It's important to strategize and consider these possibilities when
+          planning your moves and actions.
+        </p>
+        <h3>Actions Per Turn</h3>
+        <p>
+          Each player has a limited number of actions they can perform during
+          their turn. Be sure to use your actions wisely and strategically to
+          gain an advantage over your opponents. Efficiently managing your
+          actions is crucial for success in the game.
+        </p>
+        <p>
+          We hope this information helps you get started with our game. Good
+          luck and have fun!
+        </p>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -208,6 +272,7 @@ export default {
       dragging: false,
       dragStartX: 0,
       dragStartY: 0,
+      isModalVisible: false,
     };
   },
   methods: {
@@ -216,16 +281,30 @@ export default {
     },
     handleAction(action) {
       const buildAction = (structureType) => {
-        this.sendAction({
-          type: "build",
-          payload: {
-            x: this.selectedCell.x,
-            y: this.selectedCell.y,
-            username: this.user.username,
-            structureType: structureType,
-            userId: this.user._id,
-          },
-        });
+        // Define the cost of the structure
+        const structureCost = {
+          structureSpawn: 1500,
+          structureTower: 750,
+        };
+        // Check if the user has enough gold
+        if (this.user.resources.gold >= structureCost[structureType]) {
+          // Deduct the cost from the user's gold
+          this.user.resources.gold -= structureCost[structureType];
+
+          // Send the action
+          this.sendAction({
+            type: "build",
+            payload: {
+              x: this.selectedCell.x,
+              y: this.selectedCell.y,
+              username: this.user.username,
+              structureType: structureType,
+              userId: this.user._id,
+            },
+          });
+        } else {
+          this.sendAlert("Not enough gold to build this structure.");
+        }
       };
       const moveOrShootOrMineAction = (action) => {
         if (!this.selectedActionType || this.selectedActionType !== action) {
@@ -243,15 +322,29 @@ export default {
           username: this.user.username,
           userId: this.user._id,
         };
-
         if (
           this.selectedActionType === "move worker" ||
           this.selectedActionType === "move axeman" ||
           this.selectedActionType === "spawn worker" ||
           this.selectedActionType === "spawn axeman" ||
+          this.selectedActionType === "axeman attack" ||
           this.selectedActionType === "worker mine" ||
           this.selectedActionType === "tower shoot"
         ) {
+          if (!this.user.resources) {
+            this.sendAlert("Please relogin");
+            this.logout();
+            return;
+          }
+          // if (
+          //   !checkUserCanAffordAction(
+          //     this.selectedActionType,
+          //     this.user.resources
+          //   )
+          // ) {
+          //   this.sendAlert("Not enough resources to perform this action");
+          //   return;
+          // }
           this.sendAction({
             type: this.selectedActionType,
             payload: actionPayload,
@@ -269,6 +362,7 @@ export default {
         "move axeman": () => moveOrShootOrMineAction("move axeman"),
         "worker mine": () => moveOrShootOrMineAction("worker mine"),
         "tower shoot": () => moveOrShootOrMineAction("tower shoot"),
+        "axeman attack": () => moveOrShootOrMineAction("axeman attack"),
         "spawn worker": () => moveOrShootOrMineAction("spawn worker"),
         "spawn axeman": () => moveOrShootOrMineAction("spawn axeman"),
       };
@@ -281,6 +375,14 @@ export default {
     },
 
     onActionClick(actionType) {
+      if (actionType === "spawn worker" && this.user.resources.gold < 150) {
+        this.sendAlert("Not enough gold to spawn a worker.");
+        return;
+      }
+      if (actionType === "spawn axeman" && this.user.resources.gold < 250) {
+        this.sendAlert("Not enough gold to spawn an axeman.");
+        return;
+      }
       this.actionPopup = true;
       this.selectedActionType = actionType;
       this.targetCell = null;
@@ -360,6 +462,8 @@ export default {
         case "spawn worker":
         case "spawn axeman":
           return noUnitBuildingResource && !cell.building && isInRangeOne;
+        case "axeman attack":
+          return isInRangeOne && (cell.unit || cell.building);
         case "tower shoot":
           return (
             this.isInRange(this.selectedCell, cell, 3) &&
@@ -456,6 +560,12 @@ export default {
       sessionStorage.removeItem("userId");
       sessionStorage.removeItem("token");
       this.$router.push("/login");
+    },
+    showModal() {
+      this.isModalVisible = true;
+    },
+    hideModal() {
+      this.isModalVisible = false;
     },
   },
   beforeUnmount() {
@@ -599,5 +709,74 @@ export default {
   position: relative;
   transform-origin: top left;
   transition: transform 0.3s;
+}
+/* Help button */
+.help-button {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  font-size: 24px;
+  border-radius: 50%;
+  width: 50px;
+  height: 50px;
+  text-align: center;
+  line-height: 50px;
+  background-color: #333;
+  color: white;
+  cursor: pointer;
+  z-index: 999;
+}
+
+.help-button {
+  text-align: center;
+  position: fixed;
+  bottom: 20px;
+  right: 30px;
+  font-size: 24px;
+  background-color: #000000;
+  border: none;
+  border-radius: 50%;
+  width: 50px;
+  height: 50px;
+  cursor: pointer;
+  transition: all 0.1s ease-in-out;
+}
+.help-button:hover {
+  background-color: #333333;
+  scale: 1.1;
+}
+
+.modal {
+  position: fixed;
+  z-index: 1000;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  overflow: auto;
+  background-color: rgba(0, 0, 0, 0.4);
+}
+
+.modal-content {
+  background-color: #fefefe;
+  margin: 15% auto;
+  padding: 20px;
+  border: 1px solid #888;
+  width: 80%;
+}
+
+.close {
+  color: #aaaaaa;
+  float: right;
+  font-size: 28px;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.close:hover,
+.close:focus {
+  color: #000;
+  text-decoration: none;
+  cursor: pointer;
 }
 </style>
