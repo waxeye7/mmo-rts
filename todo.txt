@@ -5,4 +5,4 @@ make data visual more than text
 add image to cell Information
 hitpoints into a bar
 archers
-icon over the unit when zoom out to see who owns it
+make a 'your pending actions' section so user can cancel

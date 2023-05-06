@@ -18,9 +18,14 @@ const signup = async (req, res) => {
       password: hashedPassword,
       actions: 10,
       resources: {
-        gold: 1500,
+        gold: 1650,
         wood: 0,
-      }
+      },
+      identifier: {
+        backgroundColor: req.body.identifier.backgroundColor,
+        shape: req.body.identifier.shape,
+        fillColor: req.body.identifier.fillColor,
+      },
     });
 
     await newUser.save();

@@ -29,5 +29,14 @@
 button {
   padding:0;
   border:1px white solid;
-  margin:-2px 0;
+  margin: 0;
+}
+.absolute {
+  position:absolute;
+}
+.relative {
+  position:relative;
+}
+.align-start {
+  align-items: start;
 }

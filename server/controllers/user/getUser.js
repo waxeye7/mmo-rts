@@ -5,6 +5,7 @@ const getUser = async (req, res) => {
             "username actions resources"
           );
         res.json(IDed_User)
+        console.log(IDed_User)
     } catch (err) {
         console.log(err);
         res.status(500).json({ message: "Error getting user by ID" });

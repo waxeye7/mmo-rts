@@ -1,3 +1,6 @@
+<script setup>
+import UserIdentifier from "../components/UserIdentifier.vue";
+</script>
 <template>
   <div id="auth-forms">
     <h1>Login</h1>
@@ -47,6 +50,45 @@
         required
       />
 
+      <!-- Input field for shape -->
+      <label for="shape">Shape:</label>
+      <select id="shape" v-model="signupForm.identifier.shape">
+        <option value="circle">Circle</option>
+        <option value="square">Square</option>
+        <option value="triangle">Triangle</option>
+        <option value="ellipse">Ellipse</option>
+        <option value="rhombus">Rhombus</option>
+        <option value="star">Star</option>
+        <option value="hexagon">Hexagon</option>
+        <option value="trapezoid">Trapezoid</option>
+        <option value="candle">Candle</option>
+        <option value="arrow">Arrow</option>
+        <option value="tetris">Tetris</option>
+        <option value="stick">Stick</option>
+      </select>
+
+      <!-- Input field for background color -->
+      <label for="background-color">Background color:</label>
+      <input
+        id="background-color"
+        type="color"
+        v-model="signupForm.identifier.backgroundColor"
+      />
+
+      <!-- Input field for fill color -->
+      <label for="fill-color">Fill color:</label>
+      <input
+        id="fill-color"
+        type="color"
+        v-model="signupForm.identifier.fillColor"
+      />
+
+      <UserIdentifier
+        :backgroundColor="signupForm.identifier.backgroundColor"
+        :shape="signupForm.identifier.shape"
+        :fillColor="signupForm.identifier.fillColor"
+      />
+
       <button type="submit">Signup</button>
     </form>
   </div>
@@ -64,6 +106,11 @@ export default {
         username: "",
         password: "",
         passwordConfirm: "",
+        identifier: {
+          backgroundColor: "#000000",
+          shape: "circle",
+          fillColor: "#ffffff",
+        },
       },
     };
   },
@@ -116,6 +163,7 @@ export default {
           body: JSON.stringify({
             username: this.signupForm.username,
             password: this.signupForm.password,
+            identifier: this.signupForm.identifier,
           }),
         });
 

@@ -17,6 +17,11 @@ const UserSchema = new mongoose.Schema({
         type: Object,
         required: true,
     },
+    identifier: {
+        backgroundColor: String,
+        shape: String,
+        fillColor: String,
+      },
 });
 
 const User = mongoose.model('User', UserSchema);

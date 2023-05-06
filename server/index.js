@@ -9,7 +9,7 @@ const TaskTimestamp = require('./models/taskTimestamp');
 const loadNextTaskTimestamp = require('./controllers/taskTimestamp/loadNextTaskTimestamp');
 const decrementActions = require('./controllers/user/decrementActions');
 const User = require('./models/user');
-const canUserAffordStructure = require('./controllers/user/canUserAffordStructure');
+const canUserAfford = require('./controllers/user/canUserAfford');
 const updateUserGold = require('./controllers/user/updateUserGold');
 
 
@@ -180,7 +180,7 @@ const handleAction = async (socket, action) => {
 
 const processActions = async () => {
   for (const action of nonMoveActionsQueue) {
-    if (action.type === 'build') {
+    if (action.type === 'build spawn' || action.type === 'build tower') {
       await processBuildAction(action);
     } else if (action.type === "tower shoot") {
       await processTowerShootAction(action);
@@ -238,23 +238,22 @@ const processActions = async () => {
 };
 
 const processBuildAction = async (action) => {
+
+  const structureHits = {
+    structureSpawn: 5000,
+    structureTower: 3000
+  }
   
   const { x, y, structureType, username, userId } = action.payload;
   if (!(await isValidUser(username, userId))) {
     return;
   }
 
-  if(!await canUserAffordStructure(userId, "structureSpawn")) return;
-
-  
-
+  if(!await canUserAfford(userId, structureType)) return;
   decrementActions(userId);
-  let hits = 5000;
-  if (structureType === "structureTower") hits = 3000;
-  board[y][x].building = { structureType, owner: username, hits: hits, hitsMax: hits, damage: 100 };
-
+  
+  board[y][x].building = { structureType, owner: username, hits: structureHits[structureType], hitsMax: structureHits[structureType], damage: 100 };
   await updateUserGold(userId, structureType);
-
 };
 
 const processTowerShootAction = async (action) => {
@@ -299,7 +298,6 @@ const processSpawnWorkerAction = async (action) => {
     return;
   }
 
-
   const spawn = board[y][x].building;
   const target = board[targetY][targetX];
   if(!target) return;
@@ -328,6 +326,8 @@ const processSpawnAxemanAction = async (action) => {
     return;
   }
 
+  if(!await canUserAfford(userId, "axeman")) return;
+
   const spawn = board[y][x].building;
   const target = board[targetY][targetX];
   if(!target) return;
@@ -346,6 +346,7 @@ const processSpawnAxemanAction = async (action) => {
     hitsMax: 1000,
     damage: 50,
   }
+  await updateUserGold(userId, "axeman");
 
 };
 
@@ -484,5 +485,5 @@ cron.schedule('*/30 * * * * *', async () => {
   nextTaskTimestamp = newTimestamp;
 
   // Broadcast the remaining time
-  broadcastRemainingTime();
+  broadcastRemainingTime();//add terraun and resources to user model that interavts with the okayugn and teh gane si taht yo an naje us
 });

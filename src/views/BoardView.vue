@@ -1,27 +1,43 @@
+<script setup>
+import UserIdentifier from "../components/UserIdentifier.vue";
+</script>
+
 <template>
   <div>
-    <div class="flex no-pointer-events">
-      <h1 v-if="timer > 86400" class="mr-4">
-        Days until actions are refilled: {{ Math.floor(timer / 86400) }}
-      </h1>
-      <h1 v-else-if="timer > 3600" class="mr-4">
-        Hours until actions are refilled: {{ Math.floor(timer / 3600) }}
-      </h1>
-      <h1 v-else-if="timer > 60" class="mr-4">
-        Minutes until actions are refilled: {{ Math.floor(timer / 60) }}
-      </h1>
-      <h1 v-else class="mr-4">
-        Seconds until actions are refilled: {{ timer }}
-      </h1>
-      <h1 v-if="user" class="mr-4">Your actions: {{ user.actions }}</h1>
-      <h1 v-if="user" class="mr-4">Logged in as: {{ user.username }}</h1>
-      <h1 v-if="user && user.resources" class="mr-4">
-        Your gold: {{ user.resources.gold }}
-      </h1>
-      <!-- <h1 v-if="user && user.resources" class="mr-4">
+    <div class="flex">
+      <div class="flex no-pointer-events">
+        <h1 v-if="timer > 86400" class="mr-4">
+          Days until actions are refilled: {{ Math.floor(timer / 86400) }}
+        </h1>
+        <h1 v-else-if="timer > 3600" class="mr-4">
+          Hours until actions are refilled: {{ Math.floor(timer / 3600) }}
+        </h1>
+        <h1 v-else-if="timer > 60" class="mr-4">
+          Minutes until actions are refilled: {{ Math.floor(timer / 60) }}
+        </h1>
+        <h1 v-else class="mr-4">
+          Seconds until actions are refilled: {{ timer }}
+        </h1>
+        <h1 v-if="user" class="mr-4">Your actions: {{ user.actions }}</h1>
+        <h1 v-if="user" class="mr-4">Logged in as: {{ user.username }}</h1>
+        <h1 v-if="user && user.resources" class="mr-4">
+          Your gold: {{ user.resources.gold }}
+        </h1>
+        <!-- <h1 v-if="user && user.resources" class="mr-4">
         Your wood: {{ user.resources.wood }}
       </h1> -->
-      <h1 @click="logout" class="logout">Log Out</h1>
+      </div>
+
+      <div v-if="user" class="right-side flex align-start">
+        <UserIdentifier
+          v-if="user && user.username && userIdentifierInfo[user.username]"
+          :backgroundColor="userIdentifierInfo[user.username].backgroundColor"
+          :shape="userIdentifierInfo[user.username].shape"
+          :fillColor="userIdentifierInfo[user.username].fillColor"
+          :zoom="null"
+        />
+        <h1 @click="logout" class="logout">Log Out</h1>
+      </div>
     </div>
 
     <div v-if="selectedCell && user" class="actions-panel">
@@ -114,12 +130,23 @@
         </div>
         <div class="info-item">
           <span>Hits:</span>
-          <span
-            >{{ selectedCell.building.hits }}/{{
-              selectedCell.building.hitsMax
-            }}</span
-          >
+          <div class="progress-bar">
+            <div
+              class="progress-bar-inner"
+              :style="{
+                width:
+                  (selectedCell.building.hits / selectedCell.building.hitsMax) *
+                    100 +
+                  '%',
+                backgroundColor: getHitsColor(
+                  selectedCell.building.hits,
+                  selectedCell.building.hitsMax
+                ),
+              }"
+            ></div>
+          </div>
         </div>
+
         <div class="info-item">
           <span>Damage:</span>
           <span>{{ selectedCell.building.damage }}</span>
@@ -136,9 +163,20 @@
         </div>
         <div class="info-item">
           <span>Hits:</span>
-          <span
-            >{{ selectedCell.unit.hits }}/{{ selectedCell.unit.hitsMax }}</span
-          >
+          <div class="progress-bar">
+            <div
+              class="progress-bar-inner"
+              :style="{
+                width:
+                  (selectedCell.unit.hits / selectedCell.unit.hitsMax) * 100 +
+                  '%',
+                backgroundColor: getHitsColor(
+                  selectedCell.unit.hits,
+                  selectedCell.unit.hitsMax
+                ),
+              }"
+            ></div>
+          </div>
         </div>
         <div class="info-item">
           <span>Damage:</span>
@@ -151,6 +189,10 @@
           <span>{{ selectedCell.resource.resourceType }}</span>
         </div>
       </div>
+      <div class="info-item info-section-image">
+        <img v-if="imageSource" :src="imageSource" />
+      </div>
+
       <!-- Add more properties as needed -->
     </div>
 
@@ -173,6 +215,7 @@
           <div v-for="(row, y) in board" :key="y" style="display: flex">
             <div v-for="(cell, x) in row" :key="x">
               <button
+                class="flex align-start"
                 @click="
                   if (
                     !selectedCell ||
@@ -185,7 +228,52 @@
                   } else if (actionPopup) sendAlert('cannot target itself');
                 "
                 :style="getCellStyle(cell)"
-              ></button>
+              >
+                <UserIdentifier
+                  v-if="
+                    cell.unit ||
+                    (cell.building &&
+                      userIdentifierInfo[
+                        (cell.unit && cell.unit.owner) ||
+                          (cell.building && cell.building.owner)
+                      ])
+                  "
+                  :backgroundColor="
+                    userIdentifierInfo &&
+                    userIdentifierInfo[
+                      (cell.unit && cell.unit.owner) ||
+                        (cell.building && cell.building.owner)
+                    ] &&
+                    userIdentifierInfo[
+                      (cell.unit && cell.unit.owner) ||
+                        (cell.building && cell.building.owner)
+                    ].backgroundColor
+                  "
+                  :shape="
+                    userIdentifierInfo &&
+                    userIdentifierInfo[
+                      (cell.unit && cell.unit.owner) ||
+                        (cell.building && cell.building.owner)
+                    ] &&
+                    userIdentifierInfo[
+                      (cell.unit && cell.unit.owner) ||
+                        (cell.building && cell.building.owner)
+                    ].shape
+                  "
+                  :fillColor="
+                    userIdentifierInfo &&
+                    userIdentifierInfo[
+                      (cell.unit && cell.unit.owner) ||
+                        (cell.building && cell.building.owner)
+                    ] &&
+                    userIdentifierInfo[
+                      (cell.unit && cell.unit.owner) ||
+                        (cell.building && cell.building.owner)
+                    ].fillColor
+                  "
+                  :zoom="zoom"
+                />
+              </button>
             </div>
           </div>
         </div>
@@ -260,7 +348,9 @@ export default {
   data() {
     return {
       user: null,
+      userIdentifierInfo: {},
       board: [],
+
       selectedCell: null,
       targetCell: null,
       actionPopup: false,
@@ -273,14 +363,53 @@ export default {
       dragStartX: 0,
       dragStartY: 0,
       isModalVisible: false,
+      imageMapping: {
+        units: {
+          worker: "/images/units/worker.jpg",
+          axeman: "/images/units/axeman.jpg",
+          // ... other unit types
+        },
+        buildings: {
+          structureSpawn: "/images/buildings/spawn.jpg",
+          structureTower: "/images/buildings/tower.jpg",
+          // ... other building types
+        },
+        resources: {
+          gold: "/images/resources/gold.avif",
+          // ... other resource types
+        },
+      },
     };
+  },
+  computed: {
+    imageSource() {
+      if (this.selectedCell.unit) {
+        return this.imageMapping.units[this.selectedCell.unit.unitType];
+      } else if (this.selectedCell.building) {
+        return this.imageMapping.buildings[
+          this.selectedCell.building.structureType
+        ];
+      } else if (this.selectedCell.resource) {
+        return this.imageMapping.resources[
+          this.selectedCell.resource.resourceType
+        ];
+      } else {
+        return null;
+      }
+    },
   },
   methods: {
     sendAction(action) {
       this.$socket.emit("action", action);
     },
     handleAction(action) {
-      const buildAction = (structureType) => {
+      const buildAction = (action) => {
+        let structureType;
+        if (action === "build spawn") {
+          structureType = "structureSpawn";
+        } else if (action === "build tower") {
+          structureType = "structureTower";
+        }
         // Define the cost of the structure
         const structureCost = {
           structureSpawn: 1500,
@@ -293,7 +422,7 @@ export default {
 
           // Send the action
           this.sendAction({
-            type: "build",
+            type: action,
             payload: {
               x: this.selectedCell.x,
               y: this.selectedCell.y,
@@ -356,8 +485,8 @@ export default {
       };
 
       const actionsMap = {
-        "build tower": () => buildAction("structureTower"),
-        "build spawn": () => buildAction("structureSpawn"),
+        "build tower": () => buildAction("build tower"),
+        "build spawn": () => buildAction("build spawn"),
         "move worker": () => moveOrShootOrMineAction("move worker"),
         "move axeman": () => moveOrShootOrMineAction("move axeman"),
         "worker mine": () => moveOrShootOrMineAction("worker mine"),
@@ -423,21 +552,31 @@ export default {
 
       if (cell.building) {
         if (cell.building.structureType === "structureSpawn") {
-          backgroundImageUrl = "/images/hut.jpg";
+          backgroundImageUrl = "/images/buildings/spawn.jpg";
         } else if (cell.building.structureType === "structureTower") {
-          backgroundImageUrl = "/images/tower.jpg";
+          backgroundImageUrl = "/images/buildings/tower.jpg";
         }
       } else if (cell.unit && cell.unit.unitType === "worker") {
-        backgroundImageUrl = "/images/worker.jpg";
+        backgroundImageUrl = "/images/units/worker.jpg";
       } else if (cell.unit && cell.unit.unitType === "axeman") {
-        backgroundImageUrl = "/images/axeman.jpg";
+        backgroundImageUrl = "/images/units/axeman.jpg";
       } else if (cell.resource && cell.resource.resourceType === "gold") {
-        backgroundImageUrl = "/images/gold.avif";
+        backgroundImageUrl = "/images/resources/gold.avif";
       }
 
       if (backgroundImageUrl) {
         baseStyle.backgroundImage = `url("${backgroundImageUrl}")`;
         baseStyle.backgroundSize = "cover";
+      }
+
+      // Identifier style
+      if (cell.user) {
+        const identifierSize = this.zoom <= 0.5 ? 20 : 100;
+        const identifierPosition = this.zoom <= 0.5 ? "0 0" : "center";
+        baseStyle.backgroundColor = cell.user.identifier.backgroundColor;
+        baseStyle.backgroundPosition = identifierPosition;
+        baseStyle.backgroundSize = `${identifierSize}px ${identifierSize}px`;
+        baseStyle.borderColor = cell.user.identifier.fillColor;
       }
 
       return baseStyle;
@@ -487,11 +626,14 @@ export default {
       const token = sessionStorage.getItem("token");
 
       try {
-        const response = await fetch(`http://localhost:3000/users/${userId}`, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
+        const response = await fetch(
+          `http://localhost:3000/users/getone/${userId}`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
 
         if (!response.ok) {
           throw new Error(`HTTP error: ${response.status}`);
@@ -567,6 +709,36 @@ export default {
     hideModal() {
       this.isModalVisible = false;
     },
+    getHitsColor(hits, hitsMax) {
+      const percentage = hits / hitsMax;
+      if (percentage > 0.5) {
+        return "green";
+      } else if (percentage > 0.25) {
+        return "orange";
+      } else {
+        return "red";
+      }
+    },
+    async getAllUserIdentifiers() {
+      const token = sessionStorage.getItem("token");
+      if (!token) return console.log("No token");
+      try {
+        const response = await fetch(`http://localhost:3000/users/all`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+
+        if (!response.ok) {
+          throw new Error(`HTTP error: ${response.status}`);
+        }
+
+        const usersInfo = await response.json();
+        this.userIdentifierInfo = usersInfo;
+      } catch (error) {
+        console.error("Error fetching user by ID:", error);
+      }
+    },
   },
   beforeUnmount() {
     // Remove the socket listeners
@@ -576,6 +748,7 @@ export default {
     this.$socket.off("actionsReset");
     this.$socket.off("warning");
     this.$socket.off("forceLogout");
+    this.$socket.off("serverRestart");
 
     this.$el
       .querySelector(".scroll-container")
@@ -634,6 +807,8 @@ export default {
         this.timer -= 1;
       }
     }, 1000);
+
+    this.getAllUserIdentifiers();
   },
   // watch: {
   //   board: {
@@ -650,12 +825,28 @@ export default {
 </script>
 
 <style scoped>
+.progress-bar {
+  background-color: #ddd;
+  border-radius: 3px;
+  overflow: hidden;
+  width: 100%;
+}
+
+.progress-bar-inner {
+  height: 10px;
+  border-radius: 3px;
+}
+
 .logout {
   border: 2px solid black;
   padding: 2px;
   cursor: pointer;
+  margin: 0;
 }
-
+.right-side {
+  margin-left: auto;
+  margin-right: 6px;
+}
 .selected {
   border: 2px solid red;
 }
@@ -687,7 +878,20 @@ export default {
   justify-content: space-between;
   align-items: center;
 }
+.info-section-image {
+  width: 240px;
+  max-height: 200px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
 
+.info-section-image img {
+  object-fit: contain;
+  max-width: 100%;
+  max-height: 100%;
+}
 .outer-container {
   position: relative;
   overflow: hidden;
