@@ -66,8 +66,8 @@ export default {
     width = "20px";
     height = "20px";
   } else if (this.zoom === null) {
-    width = "43px";
-    height = "43px";
+    width = "50px";
+    height = "50px";
   } else {
     width = "200px";
     height = "200px";
