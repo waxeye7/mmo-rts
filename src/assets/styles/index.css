@@ -28,8 +28,8 @@
 }
 button {
   padding:0;
-  border:1px white solid;
   margin: 0;
+  border:none;
 }
 .absolute {
   position:absolute;
@@ -39,4 +39,17 @@ button {
 }
 .align-start {
   align-items: start;
+}
+.margin-center {
+  margin-left:auto;
+  margin-right: auto;
+}
+.text-align-center {
+  text-align: center;
+}
+body {
+  margin:0;
+}
+h3{
+  margin-top:0;
 }
