@@ -252,7 +252,13 @@ const processBuildAction = async (action) => {
   if(!await canUserAfford(userId, structureType)) return;
   decrementActions(userId);
   
-  board[y][x].building = { structureType, owner: username, hits: structureHits[structureType], hitsMax: structureHits[structureType], damage: 100 };
+  let buildingObject = { structureType, owner: username, hits: structureHits[structureType], hitsMax: structureHits[structureType] };
+  if(structureType === "structureTower") {
+    buildingObject.damage = 100;
+  
+  }
+
+  board[y][x].building = buildingObject;
   await updateUserGold(userId, structureType);
 };
 
