@@ -3,7 +3,7 @@ const getCost = (instance) => {
     worker: 150,
     axeman: 250,
     structureSpawn: 1500,
-    anotherStructure: 750,
+    structureTower: 750,
   };
 
   return costs[instance];

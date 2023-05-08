@@ -11,6 +11,7 @@ const decrementActions = require('./controllers/user/decrementActions');
 const User = require('./models/user');
 const canUserAfford = require('./controllers/user/canUserAfford');
 const updateUserGold = require('./controllers/user/updateUserGold');
+const getCost = require('../CONSTANTS/getCost');
 
 
 mongoose.connect(url, { useNewUrlParser: true })
@@ -238,11 +239,6 @@ const processActions = async () => {
 };
 
 const processBuildAction = async (action) => {
-
-  const structureHits = {
-    structureSpawn: 5000,
-    structureTower: 3000
-  }
   
   const { x, y, structureType, username, userId } = action.payload;
   if (!(await isValidUser(username, userId))) {
@@ -252,10 +248,15 @@ const processBuildAction = async (action) => {
   if(!await canUserAfford(userId, structureType)) return;
   decrementActions(userId);
   
-  let buildingObject = { structureType, owner: username, hits: structureHits[structureType], hitsMax: structureHits[structureType] };
+  let buildingObject = { structureType, owner: username, hits: getCost[structureType], hitsMax: getCost[structureType] };
   if(structureType === "structureTower") {
     buildingObject.damage = 100;
-  
+    buildingObject.hits = 3000;
+    buildingObject.hitsMax = 3000;
+  }
+  else if(structureType === "structureSpawn") {
+    buildingObject.hits = 5000;
+    buildingObject.hitsMax = 5000;
   }
 
   board[y][x].building = buildingObject;
