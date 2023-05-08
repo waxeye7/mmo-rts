@@ -1,8 +1,5 @@
 make yellow effect on move on cell with unit because the action could be cancelled
-ui on unit/building
 make world continuous
 make data visual more than text
-add image to cell Information
-hitpoints into a bar
 archers
 make a 'your pending actions' section so user can cancel
