@@ -1,116 +1,92 @@
 <script setup>
 import UserIdentifier from "../components/UserIdentifier.vue";
+import ActionBubble from "../components/ActionBubble.vue";
 </script>
 
 <template>
-  <div>
-    <div class="flex">
-      <div class="flex no-pointer-events">
-        <h1 v-if="timer > 86400" class="mr-4">
-          Days until actions are refilled: {{ Math.floor(timer / 86400) }}
-        </h1>
-        <h1 v-else-if="timer > 3600" class="mr-4">
-          Hours until actions are refilled: {{ Math.floor(timer / 3600) }}
-        </h1>
-        <h1 v-else-if="timer > 60" class="mr-4">
-          Minutes until actions are refilled: {{ Math.floor(timer / 60) }}
-        </h1>
-        <h1 v-else class="mr-4">
-          Seconds until actions are refilled: {{ timer }}
-        </h1>
-        <h1 v-if="user" class="mr-4">Your actions: {{ user.actions }}</h1>
-        <h1 v-if="user" class="mr-4">Logged in as: {{ user.username }}</h1>
-        <h1 v-if="user && user.resources" class="mr-4">
-          Your gold: {{ user.resources.gold }}
-        </h1>
-        <!-- <h1 v-if="user && user.resources" class="mr-4">
-        Your wood: {{ user.resources.wood }}
-      </h1> -->
-      </div>
-
-      <div v-if="user" class="right-side flex align-start">
+  <div class="father">
+    <div class="header-container">
+      <div class="left-section">
         <UserIdentifier
+          style="margin-right: 10px"
           v-if="user && user.username && userIdentifierInfo[user.username]"
           :backgroundColor="userIdentifierInfo[user.username].backgroundColor"
           :shape="userIdentifierInfo[user.username].shape"
           :fillColor="userIdentifierInfo[user.username].fillColor"
           :zoom="null"
         />
+        <h1 v-if="timer" class="header-item">
+          Time until actions are refilled:
+          {{
+            timer > 86400
+              ? Math.floor(timer / 86400) + " days"
+              : timer > 3600
+              ? Math.floor(timer / 3600) + " hours"
+              : timer > 60
+              ? Math.floor(timer / 60) + " minutes"
+              : timer + " seconds"
+          }}
+        </h1>
+        <h1 v-if="user" class="header-item">
+          Your actions: {{ user.actions }}
+        </h1>
+        <div v-if="user && user.resources" class="resource-item">
+          <img class="resource-icon" src="images/icons/gold.png" alt="Gold" />
+          <span>Gold: {{ user.resources.gold }}</span>
+        </div>
+        <div v-if="user && user.resources" class="resource-item">
+          <img
+            class="resource-icon"
+            src="images/icons/wood.png"
+            style="margin-bottom: 2px"
+            alt="Wood"
+          />
+          <span>Wood: {{ user.resources.wood }}</span>
+        </div>
+      </div>
+
+      <div v-if="user" class="right-section">
+        <h1 class="header-item">Logged in as: {{ user.username }}</h1>
         <h1 @click="logout" class="logout">Log Out</h1>
       </div>
     </div>
 
-    <div v-if="selectedCell && user" class="actions-panel">
-      <h3>Actions</h3>
-      <div
-        v-if="
-          selectedCell.building &&
-          selectedCell.building.structureType === 'structureSpawn' &&
-          selectedCell.building.owner === user.username
-        "
-      >
-        <div @click="handleAction('spawn worker')" class="button">
-          Spawn Worker
-        </div>
-        <div @click="handleAction('spawn axeman')" class="button">
-          Spawn Axeman
-        </div>
-      </div>
-
-      <div
-        v-if="
-          selectedCell.building &&
-          selectedCell.building.structureType === 'structureTower' &&
-          selectedCell.building.owner === user.username
-        "
-      >
-        <div @click="handleAction('tower shoot')" class="button">
-          Tower Shoot
-        </div>
-      </div>
-
-      <div
-        v-if="
-          selectedCell.unit &&
-          selectedCell.unit.owner === user.username &&
-          selectedCell.unit.unitType === 'worker'
-        "
-      >
-        <div @click="handleAction('move worker')" class="button">Move</div>
-        <div @click="handleAction('worker mine')" class="button">Mine</div>
-      </div>
-
-      <div
-        v-if="
-          selectedCell.unit &&
-          selectedCell.unit.owner === user.username &&
-          selectedCell.unit.unitType === 'axeman'
-        "
-      >
-        <div @click="handleAction('move axeman')" class="button">Move</div>
-        <div @click="handleAction('axeman attack')" class="button">Attack</div>
-      </div>
-
-      <div
-        v-if="
-          !selectedCell.unit && !selectedCell.resource && !selectedCell.building
-        "
-      >
-        <div @click="handleAction('build spawn')" class="button">
-          Build Spawn
-        </div>
-        <div @click="handleAction('build tower')" class="button">
-          Build Tower
-        </div>
-      </div>
-
-      <div v-if="actionPopup && selectedActionType" class="button">
-        <div @click="cancelTargetSelection">Cancel Action</div>
-      </div>
-    </div>
-
-    <div v-if="selectedCell" class="info-panel">
+    <div v-if="selectedCell" class="info-panel relative">
       <h3>Cell Information</h3>
+      <div
+        v-if="selectedCell.unit"
+        class="user-identifier-absolute-cell-information"
+      >
+        <UserIdentifier
+          v-if="
+            selectedCell.unit.owner &&
+            userIdentifierInfo[selectedCell.unit.owner]
+          "
+          :backgroundColor="
+            userIdentifierInfo[selectedCell.unit.owner].backgroundColor
+          "
+          :shape="userIdentifierInfo[selectedCell.unit.owner].shape"
+          :fillColor="userIdentifierInfo[selectedCell.unit.owner].fillColor"
+          :zoom="null"
+        />
+      </div>
+      <div
+        v-if="selectedCell.building"
+        class="user-identifier-absolute-cell-information"
+      >
+        <UserIdentifier
+          v-if="
+            selectedCell.building.owner &&
+            userIdentifierInfo[selectedCell.building.owner]
+          "
+          :backgroundColor="
+            userIdentifierInfo[selectedCell.building.owner].backgroundColor
+          "
+          :shape="userIdentifierInfo[selectedCell.building.owner].shape"
+          :fillColor="userIdentifierInfo[selectedCell.building.owner].fillColor"
+          :zoom="null"
+        />
+      </div>
       <div class="info-item">
         <span>X:</span>
         <span>{{ selectedCell.x }}</span>
@@ -130,21 +106,11 @@ import UserIdentifier from "../components/UserIdentifier.vue";
         </div>
         <div class="info-item">
           <span>Hits:</span>
-          <div class="progress-bar">
-            <div
-              class="progress-bar-inner"
-              :style="{
-                width:
-                  (selectedCell.building.hits / selectedCell.building.hitsMax) *
-                    100 +
-                  '%',
-                backgroundColor: getHitsColor(
-                  selectedCell.building.hits,
-                  selectedCell.building.hitsMax
-                ),
-              }"
-            ></div>
-          </div>
+          <span
+            >{{ selectedCell.building.hits }}/{{
+              selectedCell.building.hitsMax
+            }}</span
+          >
         </div>
 
         <div class="info-item">
@@ -163,21 +129,11 @@ import UserIdentifier from "../components/UserIdentifier.vue";
         </div>
         <div class="info-item">
           <span>Hits:</span>
-          <div class="progress-bar">
-            <div
-              class="progress-bar-inner"
-              :style="{
-                width:
-                  (selectedCell.unit.hits / selectedCell.unit.hitsMax) * 100 +
-                  '%',
-                backgroundColor: getHitsColor(
-                  selectedCell.unit.hits,
-                  selectedCell.unit.hitsMax
-                ),
-              }"
-            ></div>
-          </div>
+          <span
+            >{{ selectedCell.unit.hits }}/{{ selectedCell.unit.hitsMax }}</span
+          >
         </div>
+
         <div class="info-item">
           <span>Damage:</span>
           <span>{{ selectedCell.unit.damage }}</span>
@@ -191,6 +147,39 @@ import UserIdentifier from "../components/UserIdentifier.vue";
       </div>
       <div class="info-item info-section-image">
         <img v-if="imageSource" :src="imageSource" />
+      </div>
+      <div v-if="selectedCell.building" class="info-item">
+        <div class="progress-bar">
+          <div
+            class="progress-bar-inner"
+            :style="{
+              width:
+                (selectedCell.building.hits / selectedCell.building.hitsMax) *
+                  100 +
+                '%',
+              backgroundColor: getHitsColor(
+                selectedCell.building.hits,
+                selectedCell.building.hitsMax
+              ),
+            }"
+          ></div>
+        </div>
+      </div>
+      <div v-if="selectedCell.unit" class="info-item">
+        <div class="progress-bar">
+          <div
+            class="progress-bar-inner"
+            :style="{
+              width:
+                (selectedCell.unit.hits / selectedCell.unit.hitsMax) * 100 +
+                '%',
+              backgroundColor: getHitsColor(
+                selectedCell.unit.hits,
+                selectedCell.unit.hitsMax
+              ),
+            }"
+          ></div>
+        </div>
       </div>
 
       <!-- Add more properties as needed -->
@@ -214,66 +203,77 @@ import UserIdentifier from "../components/UserIdentifier.vue";
         >
           <div v-for="(row, y) in board" :key="y" style="display: flex">
             <div v-for="(cell, x) in row" :key="x">
-              <button
-                class="flex align-start"
-                @click="
-                  if (
-                    !selectedCell ||
-                    selectedCell.x !== cell.x ||
-                    selectedCell.y !== cell.y
-                  ) {
-                    actionPopup ? selectTargetCell(cell) : selectCell(cell);
-                  } else if (!actionPopup) {
-                    selectedCell = null;
-                  } else if (actionPopup) sendAlert('cannot target itself');
-                "
-                :style="getCellStyle(cell)"
-              >
-                <UserIdentifier
-                  v-if="
-                    cell.unit ||
-                    (cell.building &&
+              <div class="cell-wrapper">
+                <button
+                  class="flex align-start"
+                  @click="
+                    if (
+                      !selectedCell ||
+                      selectedCell.x !== cell.x ||
+                      selectedCell.y !== cell.y
+                    ) {
+                      actionPopup ? selectTargetCell(cell) : selectCell(cell);
+                    } else if (!actionPopup) {
+                      selectedCell = null;
+                    } else if (actionPopup) sendAlert('cannot target itself');
+                  "
+                  :style="getCellStyle(cell)"
+                >
+                  <UserIdentifier
+                    v-if="
+                      cell.unit ||
+                      (cell.building &&
+                        userIdentifierInfo[
+                          (cell.unit && cell.unit.owner) ||
+                            (cell.building && cell.building.owner)
+                        ])
+                    "
+                    :backgroundColor="
+                      userIdentifierInfo &&
                       userIdentifierInfo[
                         (cell.unit && cell.unit.owner) ||
                           (cell.building && cell.building.owner)
-                      ])
+                      ] &&
+                      userIdentifierInfo[
+                        (cell.unit && cell.unit.owner) ||
+                          (cell.building && cell.building.owner)
+                      ].backgroundColor
+                    "
+                    :shape="
+                      userIdentifierInfo &&
+                      userIdentifierInfo[
+                        (cell.unit && cell.unit.owner) ||
+                          (cell.building && cell.building.owner)
+                      ] &&
+                      userIdentifierInfo[
+                        (cell.unit && cell.unit.owner) ||
+                          (cell.building && cell.building.owner)
+                      ].shape
+                    "
+                    :fillColor="
+                      userIdentifierInfo &&
+                      userIdentifierInfo[
+                        (cell.unit && cell.unit.owner) ||
+                          (cell.building && cell.building.owner)
+                      ] &&
+                      userIdentifierInfo[
+                        (cell.unit && cell.unit.owner) ||
+                          (cell.building && cell.building.owner)
+                      ].fillColor
+                    "
+                    :zoom="zoom"
+                  />
+                </button>
+                <ActionBubble
+                  v-if="
+                    selectedCell && selectedCell.x === x && selectedCell.y === y
                   "
-                  :backgroundColor="
-                    userIdentifierInfo &&
-                    userIdentifierInfo[
-                      (cell.unit && cell.unit.owner) ||
-                        (cell.building && cell.building.owner)
-                    ] &&
-                    userIdentifierInfo[
-                      (cell.unit && cell.unit.owner) ||
-                        (cell.building && cell.building.owner)
-                    ].backgroundColor
-                  "
-                  :shape="
-                    userIdentifierInfo &&
-                    userIdentifierInfo[
-                      (cell.unit && cell.unit.owner) ||
-                        (cell.building && cell.building.owner)
-                    ] &&
-                    userIdentifierInfo[
-                      (cell.unit && cell.unit.owner) ||
-                        (cell.building && cell.building.owner)
-                    ].shape
-                  "
-                  :fillColor="
-                    userIdentifierInfo &&
-                    userIdentifierInfo[
-                      (cell.unit && cell.unit.owner) ||
-                        (cell.building && cell.building.owner)
-                    ] &&
-                    userIdentifierInfo[
-                      (cell.unit && cell.unit.owner) ||
-                        (cell.building && cell.building.owner)
-                    ].fillColor
-                  "
-                  :zoom="zoom"
+                  :cell="cell"
+                  :user="user"
+                  @action="handleAction"
+                  @cancel_target_selection="cancelTargetSelection"
                 />
-              </button>
+              </div>
             </div>
           </div>
         </div>
@@ -370,7 +370,7 @@ export default {
           // ... other unit types
         },
         buildings: {
-          structureSpawn: "/images/buildings/spawn.jpg",
+          structureSpawn: "/images/buildings/hut.png",
           structureTower: "/images/buildings/tower.jpg",
           // ... other building types
         },
@@ -382,6 +382,17 @@ export default {
     };
   },
   computed: {
+    actionButtonsPosition() {
+      if (!this.selectedCell) return {};
+      const cellSize = 100;
+      const x = this.selectedCell.x * cellSize;
+      const y = this.selectedCell.y * cellSize;
+      return {
+        position: "absolute",
+        left: `${x}px`,
+        top: `${y}px`,
+      };
+    },
     imageSource() {
       if (this.selectedCell.unit) {
         return this.imageMapping.units[this.selectedCell.unit.unitType];
@@ -521,6 +532,7 @@ export default {
       this.handleAction(this.selectedActionType);
     },
     cancelTargetSelection() {
+      this.selectedCell = null;
       this.actionPopup = false;
       this.selectedActionType = null;
       this.targetCell = null;
@@ -536,7 +548,7 @@ export default {
       if (this.actionPopup) {
         baseStyle["filter"] = this.validateTarget(cell)
           ? "brightness(1.05)"
-          : "brightness(0.4)";
+          : "brightness(0.6)";
       }
 
       if (cell.unit || cell.building) {
@@ -552,7 +564,7 @@ export default {
 
       if (cell.building) {
         if (cell.building.structureType === "structureSpawn") {
-          backgroundImageUrl = "/images/buildings/spawn.jpg";
+          backgroundImageUrl = "/images/buildings/hut.png";
         } else if (cell.building.structureType === "structureTower") {
           backgroundImageUrl = "/images/buildings/tower.jpg";
         }
@@ -562,6 +574,8 @@ export default {
         backgroundImageUrl = "/images/units/axeman.jpg";
       } else if (cell.resource && cell.resource.resourceType === "gold") {
         backgroundImageUrl = "/images/resources/gold.avif";
+      } else {
+        backgroundImageUrl = "/images/terrain/grass.jpg";
       }
 
       if (backgroundImageUrl) {
@@ -837,12 +851,53 @@ export default {
   border-radius: 3px;
 }
 
+.header-container {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem;
+  background-color: #1d1e22;
+}
+
+.left-section,
+.right-section {
+  display: flex;
+  align-items: center;
+  color: white;
+}
+
+.header-item {
+  margin-right: 1rem;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #fff;
+}
+
+.resource-item {
+  display: flex;
+  align-items: center;
+  margin-right: 1.5rem;
+}
+
+.resource-icon {
+  width: 26px;
+  height: 26px;
+  margin-right: 5px;
+}
+
 .logout {
+  cursor: pointer;
+  color: #61dafb;
+  font-size: 1.1rem;
+  font-weight: 600;
+  text-decoration: underline;
+}
+/* .logout {
   border: 2px solid black;
   padding: 2px;
   cursor: pointer;
   margin: 0;
-}
+} */
 .right-side {
   margin-left: auto;
   margin-right: 6px;
@@ -865,10 +920,10 @@ export default {
 .info-panel {
   position: absolute;
   right: 0;
-  top: 0;
-  width: 240px;
-  background-color: rgba(255, 255, 255, 1);
-  border-left: 1px solid #ccc;
+  top: 74px;
+  width: 260px;
+  background-color: rgb(0, 0, 0);
+  color: #ffffff;
   padding: 16px;
   z-index: 2;
 }
@@ -913,6 +968,7 @@ export default {
   position: relative;
   transform-origin: top left;
   transition: transform 0.3s;
+  padding: 100px;
 }
 /* Help button */
 .help-button {
@@ -982,5 +1038,19 @@ export default {
   color: #000;
   text-decoration: none;
   cursor: pointer;
+}
+.cell-wrapper {
+  position: relative;
+  width: 100px;
+  height: 100px;
+}
+.father {
+  background-color: #1d1e22f1;
+}
+.user-identifier-absolute-cell-information {
+  border: 1px white solid;
+  position: absolute;
+  top: 0;
+  right: 0;
 }
 </style>
