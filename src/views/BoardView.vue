@@ -43,6 +43,15 @@ import ActionBubble from "../components/ActionBubble.vue";
           />
           <span>Wood: {{ user.resources.wood }}</span>
         </div>
+        <div v-if="user && user.resources" class="resource-item">
+          <img
+            class="resource-icon"
+            src="images/icons/food.png"
+            style="margin-bottom: 2px"
+            alt="Wood"
+          />
+          <span>Food: {{ user.resources.wood }}</span>
+        </div>
       </div>
 
       <div v-if="user" class="right-section">
@@ -375,7 +384,7 @@ export default {
           // ... other building types
         },
         resources: {
-          gold: "/images/resources/gold.avif",
+          gold: "/images/resources/gold.png",
           // ... other resource types
         },
       },
@@ -562,6 +571,10 @@ export default {
         baseStyle.border = "2px solid blue !important";
       }
 
+      if (!baseStyle.border) {
+        baseStyle.border = "2px solid transparent !important";
+      }
+
       if (cell.building) {
         if (cell.building.structureType === "structureSpawn") {
           backgroundImageUrl = "/images/buildings/hut.png";
@@ -573,25 +586,30 @@ export default {
       } else if (cell.unit && cell.unit.unitType === "axeman") {
         backgroundImageUrl = "/images/units/axeman.jpg";
       } else if (cell.resource && cell.resource.resourceType === "gold") {
-        backgroundImageUrl = "/images/resources/gold.avif";
+        backgroundImageUrl = "/images/resources/gold.png";
       } else {
         backgroundImageUrl = "/images/terrain/grass.jpg";
       }
 
+      if (cell.unit && cell.unit.owner !== this.user.username)
+        baseStyle.backgroundColor = "red";
+
       if (backgroundImageUrl) {
         baseStyle.backgroundImage = `url("${backgroundImageUrl}")`;
         baseStyle.backgroundSize = "cover";
+        baseStyle.backgroundPosition = "center";
+        if (cell.resource) baseStyle.backgroundColor = "black";
       }
 
-      // Identifier style
-      if (cell.user) {
-        const identifierSize = this.zoom <= 0.5 ? 20 : 100;
-        const identifierPosition = this.zoom <= 0.5 ? "0 0" : "center";
-        baseStyle.backgroundColor = cell.user.identifier.backgroundColor;
-        baseStyle.backgroundPosition = identifierPosition;
-        baseStyle.backgroundSize = `${identifierSize}px ${identifierSize}px`;
-        baseStyle.borderColor = cell.user.identifier.fillColor;
-      }
+      // // Identifier style
+      // if (cell.unit || cell.building) {
+      //   const identifierSize = this.zoom <= 0.5 ? 20 : 100;
+      //   const identifierPosition = this.zoom <= 0.5 ? "0 0" : "center";
+      //   baseStyle.backgroundColor = cell.user.identifier.backgroundColor;
+      //   baseStyle.backgroundPosition = identifierPosition;
+      //   baseStyle.backgroundSize = `${identifierSize}px ${identifierSize}px`;
+      //   baseStyle.borderColor = cell.user.identifier.fillColor;
+      // }
 
       return baseStyle;
     },
@@ -951,7 +969,7 @@ export default {
   position: relative;
   overflow: hidden;
   width: 100%;
-  height: 86vh;
+  height: 100vh;
   display: flex;
   justify-content: center;
   align-items: center;
