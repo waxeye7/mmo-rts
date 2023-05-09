@@ -59,10 +59,10 @@ export default {
   computed: {
     containerStyle() {
   let width, height;
-  if (this.zoom && this.zoom <= 0.45) {
+  if (this.zoom && this.zoom <= 0.35) {
     width = "100px";
     height = "100px";
-  } else if (this.zoom && this.zoom > 0.45) {
+  } else if (this.zoom && this.zoom > 0.30) {
     width = "20px";
     height = "20px";
   } else if (this.zoom === null) {
