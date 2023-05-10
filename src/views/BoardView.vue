@@ -19,12 +19,6 @@ import { v4 as uuidv4 } from "uuid";
           :zoom="null"
         />
 
-        <ActionsDashboard
-          v-if="user && user.username && user.actions.length"
-          :actions="user.actions"
-          @cancel-action="cancelAction"
-        />
-
         <h1 v-if="timer" class="header-item">
           Time until actions are refilled:
           {{
@@ -297,7 +291,15 @@ import { v4 as uuidv4 } from "uuid";
           </div>
         </div>
       </div>
+
+      <ActionsDashboard
+        style="transition-delay: 100ms"
+        v-if="user && user.username && user.actions.length"
+        :actions="user.actions"
+        @cancel-action="cancelAction"
+      />
     </div>
+
     <!-- Question mark button -->
     <button class="help-button" @click="showModal">?</button>
 
@@ -385,7 +387,7 @@ export default {
       imageMapping: {
         units: {
           worker: "/images/units/worker.jpg",
-          axeman: "/images/units/axeman.jpg",
+          axeman: "/images/units/axeman.png",
           // ... other unit types
         },
         buildings: {
@@ -602,7 +604,7 @@ export default {
       } else if (cell.unit && cell.unit.unitType === "worker") {
         backgroundImageUrl = "/images/units/worker.jpg";
       } else if (cell.unit && cell.unit.unitType === "axeman") {
-        backgroundImageUrl = "/images/units/axeman.jpg";
+        backgroundImageUrl = "/images/units/axeman.png";
       } else if (cell.resource && cell.resource.resourceType === "gold") {
         backgroundImageUrl = "/images/resources/gold.png";
       } else {
@@ -1137,6 +1139,7 @@ export default {
 }
 .father {
   background-color: #1d1e22f1;
+  overflow: hidden;
 }
 .user-identifier-absolute-cell-information {
   border: 1px white solid;
