@@ -1,7 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const jwtMiddleware = require("../middlewares/jwtMiddleware");
-const { getUser, updateUser, me, getAllUserIdentifiers } = require("../controllers/user");
+const { getUser, updateUser, me, getAllUserIdentifiers, deleteAction } = require("../controllers/user");
 
 // UPDATE a User by ID
 router.put("/:id", jwtMiddleware, updateUser);
@@ -14,5 +14,8 @@ router.get("/all", jwtMiddleware, getAllUserIdentifiers);
 
 // GET a User by ID
 router.get("/getone/:id", jwtMiddleware, getUser);
+
+// DELETE an action by Index
+router.delete("/actions/:id", jwtMiddleware, deleteAction)
 
 module.exports = router;

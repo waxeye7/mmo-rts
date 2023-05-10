@@ -1,3 +1,4 @@
+// guestOnly.js
 export default async (_to, _from, next) => {
   const token = sessionStorage.getItem("token");
   if (!token) {
@@ -12,6 +13,7 @@ export default async (_to, _from, next) => {
   if (response.ok) {
     next("/");
   } else {
+    sessionStorage.removeItem("token"); // remove invalid token
     next();
   }
 };

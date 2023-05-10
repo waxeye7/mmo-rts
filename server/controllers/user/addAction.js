@@ -1,10 +1,10 @@
 const User = require("../../models/user");
 
-const decrementActions = async (userId) => {
+const addAction = async (action, userId) => {
   try {
     const user = await User.findById(userId);
-    if (user.actions > 0) {
-      user.actions -= 1;
+    if (user.actions.length <= 10) {
+      user.actions.push(action)
       await user.save();
       return user;
     } else {
@@ -16,4 +16,4 @@ const decrementActions = async (userId) => {
   }
 };
 
-module.exports = decrementActions;
+module.exports = addAction;

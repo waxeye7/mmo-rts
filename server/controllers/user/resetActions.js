@@ -1,7 +1,7 @@
 const User = require("../../models/user");
 const resetActions = async () => {
   try {
-    await User.updateMany({}, { $set: { actions: 10 } });
+    await User.updateMany({}, { $set: { actions: [] } });
     console.log("Reset actions for all players.");
     return true;
   } catch (err) {

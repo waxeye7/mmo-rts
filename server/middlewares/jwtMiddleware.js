@@ -1,6 +1,7 @@
 const jwt = require("jsonwebtoken");
+const User = require('../models/user');
 
-const jwtMiddleware = (req, res, next) => {
+const jwtMiddleware = async (req, res, next) => {
   const authHeader = req.headers.authorization;
 
   if (authHeader) {
@@ -8,7 +9,17 @@ const jwtMiddleware = (req, res, next) => {
     try {
       const decoded = jwt.verify(token, process.env.AUTH_SECRET_KEY);
 
-      req.userId = decoded.id;
+    // Find the user
+    const user = await User.findOne({ _id: decoded.id });
+
+    if (!user) {
+      throw new Error();
+    }
+
+    // Attach the user and token to the request
+      req.user = user;
+      req.token = token;
+      req.userId = user._id;
 
       return next();
     } catch (error) {

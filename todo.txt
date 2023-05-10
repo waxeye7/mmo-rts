@@ -1,5 +1,3 @@
 make yellow effect on move on cell with unit because the action could be cancelled
-make world continuous
 make data visual more than text
 archers
-make a 'your pending actions' section so user can cancel

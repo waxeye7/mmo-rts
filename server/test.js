@@ -1,7 +1,7 @@
 const assert = require('assert');
 const mongoose = require('mongoose');
 const User = require('./models/user');
-const decrementActions = require('./controllers/user/decrementActions');
+const addAction = require('./controllers/user/addAction');
 const resetActions = require('./controllers/user/resetActions');
 
 // Connect to the database
@@ -28,7 +28,7 @@ const testDecrementActions = async () => {
   const testUser = new User({ username: 'testUser', email: 'test@example.com', password: 'password', actions: 10 });
   await testUser.save();
 
-  const updatedUser = await decrementActions(testUser._id);
+  const updatedUser = await addAction(action, testUser._id);
   assert.strictEqual(updatedUser.actions, 9, 'User actions should decrease by 1');
 
   await User.deleteOne({ _id: testUser._id });

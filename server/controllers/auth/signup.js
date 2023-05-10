@@ -16,11 +16,14 @@ const signup = async (req, res) => {
     const newUser = new User({
       username,
       password: hashedPassword,
-      actions: 10,
+      actions: [],
       resources: {
         gold: 1650,
         wood: 0,
+        food: 0,
       },
+      units: [],
+      buildings: [],
       identifier: {
         backgroundColor: req.body.identifier.backgroundColor,
         shape: req.body.identifier.shape,
@@ -36,8 +39,7 @@ const signup = async (req, res) => {
     );
     res.json({
       message: "User created successfully",
-      token,
-      id: newUser._id,
+      token
     });
   } catch (error) {
     console.error("Error in sign up:", error);

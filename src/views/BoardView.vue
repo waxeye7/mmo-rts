@@ -1,6 +1,9 @@
 <script setup>
 import UserIdentifier from "../components/UserIdentifier.vue";
 import ActionBubble from "../components/ActionBubble.vue";
+import ActionsDashboard from "../components/ActionsDashboard.vue";
+import jwt_decode from "jwt-decode";
+import { v4 as uuidv4 } from "uuid";
 </script>
 
 <template>
@@ -15,6 +18,13 @@ import ActionBubble from "../components/ActionBubble.vue";
           :fillColor="userIdentifierInfo[user.username].fillColor"
           :zoom="null"
         />
+
+        <ActionsDashboard
+          v-if="user && user.username && user.actions.length"
+          :actions="user.actions"
+          @cancel-action="cancelAction"
+        />
+
         <h1 v-if="timer" class="header-item">
           Time until actions are refilled:
           {{
@@ -28,7 +38,7 @@ import ActionBubble from "../components/ActionBubble.vue";
           }}
         </h1>
         <h1 v-if="user" class="header-item">
-          Your actions: {{ user.actions }}
+          Your actions: {{ 10 - user.actions.length }}
         </h1>
         <div v-if="user && user.resources" class="resource-item">
           <img class="resource-icon" src="images/icons/gold.png" alt="Gold" />
@@ -420,7 +430,13 @@ export default {
   },
   methods: {
     sendAction(action) {
-      this.$socket.emit("action", action);
+      const token = sessionStorage.getItem("token");
+      if (!token) {
+        console.log("No token");
+        this.logout();
+        return;
+      }
+      this.$socket.emit("action", action, token);
     },
     handleAction(action) {
       const buildAction = (action) => {
@@ -442,13 +458,13 @@ export default {
 
           // Send the action
           this.sendAction({
+            id: uuidv4(),
             type: action,
             payload: {
               x: this.selectedCell.x,
               y: this.selectedCell.y,
               username: this.user.username,
               structureType: structureType,
-              userId: this.user._id,
             },
           });
         } else {
@@ -469,7 +485,6 @@ export default {
           targetX,
           targetY,
           username: this.user.username,
-          userId: this.user._id,
         };
         if (
           this.selectedActionType === "move worker" ||
@@ -495,6 +510,7 @@ export default {
           //   return;
           // }
           this.sendAction({
+            id: uuidv4(),
             type: this.selectedActionType,
             payload: actionPayload,
           });
@@ -562,8 +578,10 @@ export default {
 
       if (cell.unit || cell.building) {
         const ownedByUser =
-          (cell.unit && cell.unit.owner === this.user.username) ||
-          (cell.building && cell.building.owner === this.user.username);
+          (this.user && cell.unit && cell.unit.owner === this.user.username) ||
+          (this.user &&
+            cell.building &&
+            cell.building.owner === this.user.username);
         baseStyle.border = ownedByUser ? "2px solid green" : "2px solid red";
       }
 
@@ -654,12 +672,21 @@ export default {
       return xDistance <= range && yDistance <= range;
     },
     async fetchUserById() {
-      const userId = sessionStorage.getItem("userId");
       const token = sessionStorage.getItem("token");
+      if (!token) {
+        this.logout();
+        return;
+      }
+      const decoded = jwt_decode(token);
+      if (!decoded) {
+        this.logout();
+        return;
+      }
+      this.userId = decoded.id;
 
       try {
         const response = await fetch(
-          `http://localhost:3000/users/getone/${userId}`,
+          `http://localhost:3000/users/getone/${this.userId}`,
           {
             headers: {
               Authorization: `Bearer ${token}`,
@@ -731,7 +758,6 @@ export default {
       alert(message);
     },
     logout() {
-      sessionStorage.removeItem("userId");
       sessionStorage.removeItem("token");
       this.$router.push("/login");
     },
@@ -753,7 +779,11 @@ export default {
     },
     async getAllUserIdentifiers() {
       const token = sessionStorage.getItem("token");
-      if (!token) return console.log("No token");
+      if (!token) {
+        console.log("No token");
+        this.logout();
+        return;
+      }
       try {
         const response = await fetch(`http://localhost:3000/users/all`, {
           headers: {
@@ -771,6 +801,36 @@ export default {
         console.error("Error fetching user by ID:", error);
       }
     },
+    async cancelAction(id) {
+      const token = sessionStorage.getItem("token");
+      if (!token) {
+        console.log("No token");
+        this.logout();
+        return;
+      }
+      try {
+        const response = await fetch(
+          `http://localhost:3000/users/actions/${id}`,
+          {
+            method: "DELETE",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
+
+        if (response.ok) {
+          this.user.actions = this.user.actions.filter(
+            (action) => action.id !== id
+          );
+        } else {
+          console.error(`Failed to cancel action: ${response.statusText}`);
+        }
+      } catch (error) {
+        console.error(`Failed to cancel action: ${error}`);
+      }
+    },
   },
   beforeUnmount() {
     // Remove the socket listeners
@@ -781,6 +841,7 @@ export default {
     this.$socket.off("warning");
     this.$socket.off("forceLogout");
     this.$socket.off("serverRestart");
+    this.$socket.off("authentication_error");
 
     this.$el
       .querySelector(".scroll-container")
@@ -798,7 +859,9 @@ export default {
     // Set up the socket listeners
     this.$socket.on("updateBoard", (newBoard) => {
       console.log("Received updated board:", newBoard);
-
+      this.selectedActionType = null;
+      this.selectedCell = null;
+      this.actionPopup = false;
       this.board = newBoard;
     });
 
@@ -816,7 +879,12 @@ export default {
 
     this.$socket.on("serverRestart", () => {
       alert("You have been logged out due to a server restart.");
-      sessionStorage.removeItem("userId");
+      sessionStorage.removeItem("token");
+      this.$router.push("/login");
+    });
+
+    this.$socket.on("authentication_error", () => {
+      alert("You have been logged out due to an authentication error.");
       sessionStorage.removeItem("token");
       this.$router.push("/login");
     });
@@ -873,8 +941,9 @@ export default {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 0.75rem;
+  padding: 10px;
   background-color: #1d1e22;
+  max-height: 50px;
 }
 
 .left-section,
@@ -938,12 +1007,13 @@ export default {
 .info-panel {
   position: absolute;
   right: 0;
-  top: 74px;
+  top: 70px;
   width: 260px;
-  background-color: rgb(0, 0, 0);
+  background-color: #1d1e22;
   color: #ffffff;
   padding: 16px;
   z-index: 2;
+  border-radius: 0 0 0 6px;
 }
 
 .info-item {
@@ -969,7 +1039,7 @@ export default {
   position: relative;
   overflow: hidden;
   width: 100%;
-  height: 100vh;
+  height: calc(100vh - 70px);
   display: flex;
   justify-content: center;
   align-items: center;
@@ -979,20 +1049,23 @@ export default {
   position: relative;
   width: 100%;
   height: 100%;
-  overflow: auto;
+  overflow: hidden;
 }
 
 .board-container {
   position: relative;
-  transform-origin: top left;
+  transform-origin: right;
   transition: transform 0.3s;
-  padding: 100px;
+
+  width: 100%;
+  height: 100%;
+  margin: 100px;
 }
 /* Help button */
 .help-button {
   position: fixed;
   bottom: 20px;
-  right: 20px;
+  left: 20px;
   font-size: 24px;
   border-radius: 50%;
   width: 50px;

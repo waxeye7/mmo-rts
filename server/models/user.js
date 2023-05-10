@@ -9,8 +9,16 @@ const UserSchema = new mongoose.Schema({
         type: String,
         required: true,
     },
+    units: {
+        type: Array,
+        required: true,
+    },
+    buildings: {
+        type: Array,
+        required: true,
+    },
     actions: {
-        type: Number,
+        type: Array,
         required: true,
     },
     resources: {

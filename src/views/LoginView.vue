@@ -161,7 +161,6 @@ export default {
 
         // Save the token and user ID in local storage
         sessionStorage.setItem("token", data.token);
-        sessionStorage.setItem("userId", data.id);
 
         this.$socket.emit("loggedIn", data.id);
 
@@ -199,7 +198,6 @@ export default {
 
         // Save the token and user ID in local storage
         sessionStorage.setItem("token", data.token);
-        sessionStorage.setItem("userId", data.id);
 
         this.$socket.emit("loggedIn", data.id);
 

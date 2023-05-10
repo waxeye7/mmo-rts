@@ -7,11 +7,13 @@ const saveBoardState = require("./controllers/board/saveBoardState");
 const resetActions = require("./controllers/user/resetActions");
 const TaskTimestamp = require('./models/taskTimestamp');
 const loadNextTaskTimestamp = require('./controllers/taskTimestamp/loadNextTaskTimestamp');
-const decrementActions = require('./controllers/user/decrementActions');
+const addAction = require('./controllers/user/addAction');
 const User = require('./models/user');
 const canUserAfford = require('./controllers/user/canUserAfford');
 const updateUserGold = require('./controllers/user/updateUserGold');
 const getCost = require('../CONSTANTS/getCost');
+const { moveActionsQueue, nonMoveActionsQueue } = require('./actionsQueue');
+
 
 
 mongoose.connect(url, { useNewUrlParser: true })
@@ -80,8 +82,18 @@ io.on('connection', (socket) => {
   });
 
   // Listen for actions from the client
-  socket.on('action', (action) => {
-    handleAction(socket, action);
+  socket.on('action', (action, token) => {
+    const userId = verifyToken(token);
+  
+    if (!userId) {
+      // Send a response back to the client indicating that the authentication failed
+      socket.emit('authentication_error');
+      return;
+    }
+  
+    // At this point, the token is valid and we have the userId
+    // You can now proceed with handling the action
+    handleAction(socket, action, userId);
   });
 
   // Listen for the 'loggedIn' event
@@ -133,14 +145,24 @@ server.listen(port, () => {
   console.log(`Server is running on port ${port}`);
 });
 
-const handleAction = async (socket, action) => {
+const jwt = require("jsonwebtoken");
+
+const verifyToken = (token) => {
+  try {
+    const decoded = jwt.verify(token, process.env.AUTH_SECRET_KEY);
+    return decoded.id;
+  } catch (error) {
+    return null;
+  }
+};
+
+const handleAction = async (socket, action, userId) => {
   console.log('Received action:', action);
-  const userId = action.payload.userId;
 
   // Check if the user has actions left
   const user = await User.findById(userId);
 
-  if (user.actions <= 0) {
+  if (user.actions.length >= 10) {
 
     console.log("User has no actions left")
 
@@ -165,40 +187,41 @@ const handleAction = async (socket, action) => {
   }
 
   // If the user has actions left, proceed with the action and reset the attempts
-  let updatedUser = await decrementActions(userId);
+  let updatedUser = await addAction(action, userId);
   if(updatedUser) {
     socket.emit('updateUser', updatedUser);
     if (action.type === 'move worker' || action.type === 'move axeman') {
-      moveActionsQueue.push(action);
+      moveActionsQueue.push({action, userId});
     } else {
-      nonMoveActionsQueue.push(action);
+      nonMoveActionsQueue.push({action, userId});
     }
   }
   else {
     console.log("updated user not found. error here.")
   }
+
 };
 
 const processActions = async () => {
-  for (const action of nonMoveActionsQueue) {
-    if (action.type === 'build spawn' || action.type === 'build tower') {
-      await processBuildAction(action);
-    } else if (action.type === "tower shoot") {
-      await processTowerShootAction(action);
-    } else if (action.type === "spawn worker") {
-      await processSpawnWorkerAction(action);
+  for (const request of nonMoveActionsQueue) {
+    if (request.action.type === 'build spawn' || request.action.type === 'build tower') {
+      await processBuildAction(request.action, request.userId);
+    } else if (request.action.type === "tower shoot") {
+      await processTowerShootAction(request.action, request.userId);
+    } else if (request.action.type === "spawn worker") {
+      await processSpawnWorkerAction(request.action, request.userId);
     }
-    else if(action.type === "spawn axeman"){
-      await processSpawnAxemanAction(action);
+    else if(request.action.type === "spawn axeman"){
+      await processSpawnAxemanAction(request.action, request.userId);
     }
-    else if(action.type === "worker mine") {
-      await processWorkerMineAction(action);
+    else if(request.action.type === "worker mine") {
+      await processWorkerMineAction(request.action, request.userId);
     }
-    else if(action.type === "axeman attack") {
-      await processAxemanAttackAction(action);
+    else if(request.action.type === "axeman attack") {
+      await processAxemanAttackAction(request.action, request.userId);
     }
   }
-  nonMoveActionsQueue = [];
+  nonMoveActionsQueue.length = 0;
 
 
   // need to update units/buildings with hits < 0 before move actions
@@ -221,15 +244,25 @@ const processActions = async () => {
   }
   
 
-  for (const action of moveActionsQueue) {
-    if (action.type === "move worker") {
-      await processMoveWorkerAction(action);
+  for (const request of moveActionsQueue) {
+    if (request.action.type === "move worker") {
+      await processMoveWorkerAction(request.action, request.userId);
     }
-    else if(action.type === "move axeman"){
-      await processMoveAxemanAction(action);
+    else if(request.action.type === "move axeman"){
+      await processMoveAxemanAction(request.action, request.userId);
     }
   }
-  moveActionsQueue = [];
+  moveActionsQueue.length = 0;
+
+
+  for(let y = 0; y < board.length; y++) {
+    for(let x = 0; x < board[y].length; x++) {
+      let cell = board[y][x];
+      if(cell.unit && cell.unit.actionTaken) cell.unit.actionTaken = false;
+      else if(cell.building && cell.building.actionTaken) cell.building.actionTaken = false;
+    }
+  }
+
 
   // Save the updated board state to the database
   await saveBoardState(board);
@@ -238,17 +271,14 @@ const processActions = async () => {
   io.sockets.emit('updateBoard', board);
 };
 
-const processBuildAction = async (action) => {
-  
-  const { x, y, structureType, username, userId } = action.payload;
+const processBuildAction = async (action, userId) => {
+  const { x, y, structureType, username} = action.payload;
   if (!(await isValidUser(username, userId))) {
     return;
   }
-
   if(!await canUserAfford(userId, structureType)) return;
-  decrementActions(userId);
-  
-  let buildingObject = { structureType, owner: username, hits: getCost[structureType], hitsMax: getCost[structureType] };
+  addAction(action, userId);
+  let buildingObject = { structureType, owner: username };
   if(structureType === "structureTower") {
     buildingObject.damage = 100;
     buildingObject.hits = 3000;
@@ -264,7 +294,7 @@ const processBuildAction = async (action) => {
 };
 
 const processTowerShootAction = async (action) => {
-  const { x, y, targetX, targetY, username, userId } = action.payload;
+  const { x, y, targetX, targetY, username } = action.payload;
 
   if (!(await isValidUser(username, userId))) {
     return;
@@ -280,8 +310,8 @@ const processTowerShootAction = async (action) => {
   if(target.building) target.building.hits -= tower.damage;
 };
 
-const processAxemanAttackAction = async (action) => {
-  const { x, y, targetX, targetY, username, userId } = action.payload;
+const processAxemanAttackAction = async (action, userId) => {
+  const { x, y, targetX, targetY, username } = action.payload;
 
   if (!(await isValidUser(username, userId))) {
     return;
@@ -297,8 +327,8 @@ const processAxemanAttackAction = async (action) => {
   if(target.building) target.building.hits -= axeman.damage;
 };
 
-const processSpawnWorkerAction = async (action) => {
-  const { x, y, targetX, targetY, username, userId } = action.payload;
+const processSpawnWorkerAction = async (action, userId) => {
+  const { x, y, targetX, targetY, username } = action.payload;
 
 
   if (!(await isValidUser(username, userId))) {
@@ -325,8 +355,8 @@ const processSpawnWorkerAction = async (action) => {
   }
 };
 
-const processSpawnAxemanAction = async (action) => {
-  const { x, y, targetX, targetY, username, userId } = action.payload;
+const processSpawnAxemanAction = async (action, userId) => {
+  const { x, y, targetX, targetY, username } = action.payload;
 
 
   if (!(await isValidUser(username, userId))) {
@@ -357,8 +387,8 @@ const processSpawnAxemanAction = async (action) => {
 
 };
 
-const processWorkerMineAction = async (action) => {
-  const { x, y, targetX, targetY, username, userId } = action.payload;
+const processWorkerMineAction = async (action, userId) => {
+  const { x, y, targetX, targetY, username } = action.payload;
 
   if (!(await isValidUser(username, userId))) {
     return;
@@ -391,8 +421,8 @@ const processWorkerMineAction = async (action) => {
   }
 };
 
-const processMoveWorkerAction = async (action) => {
-  const { x, y, targetX, targetY, username, userId } = action.payload;
+const processMoveWorkerAction = async (action, userId) => {
+  const { x, y, targetX, targetY, username } = action.payload;
 
   if (!(await isValidUser(username, userId))) {
     return;
@@ -410,8 +440,8 @@ const processMoveWorkerAction = async (action) => {
   board[targetY][targetX].unit = worker;
 };
 
-const processMoveAxemanAction = async (action) => {
-  const { x, y, targetX, targetY, username, userId } = action.payload;
+const processMoveAxemanAction = async (action, userId) => {
+  const { x, y, targetX, targetY, username } = action.payload;
   if (!(await isValidUser(username, userId))) {
     return;
   }
@@ -455,8 +485,7 @@ const broadcastRemainingTime = () => {
 
 const userSockets = {};
 const userAttempts = {};
-let moveActionsQueue = [];
-let nonMoveActionsQueue = [];
+
 let nextTaskTimestamp;
 broadcastRemainingTime();
 
@@ -492,5 +521,5 @@ cron.schedule('*/30 * * * * *', async () => {
   nextTaskTimestamp = newTimestamp;
 
   // Broadcast the remaining time
-  broadcastRemainingTime();//add terraun and resources to user model that interavts with the okayugn and teh gane si taht yo an naje us
+  broadcastRemainingTime();
 });
