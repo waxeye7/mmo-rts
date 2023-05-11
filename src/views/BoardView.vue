@@ -722,25 +722,36 @@ export default {
       event.preventDefault();
 
       const container = this.$el.querySelector(".scroll-container");
+      const boardContainer = this.$el.querySelector(".board-container");
       const rect = container.getBoundingClientRect();
-      const x = event.clientX - rect.left;
-      const y = event.clientY - rect.top;
+      const x = event.clientX - rect.left; // x position within the element.
+      const y = event.clientY - rect.top; // y position within the element.
 
       const oldZoom = this.zoom;
 
       if (event.deltaY < 0) {
-        this.zoom += 0.1;
+        this.zoom = Math.min(this.zoom + 0.075, 3); // Limit max zoom level (e.g., 3)
       } else {
-        if (this.zoom > 0.2) {
-          this.zoom -= 0.1;
-        }
+        if (this.zoom <= 0.3) return;
+        this.zoom = Math.max(this.zoom - 0.075, 0.3); // Limit min zoom level (e.g., 0.35)
       }
 
-      const offsetX = x / oldZoom - x / this.zoom;
-      const offsetY = y / oldZoom - y / this.zoom;
+      const newZoom = this.zoom;
 
-      container.scrollLeft += offsetX * this.zoom;
-      container.scrollTop += offsetY * this.zoom;
+      // The following calculations essentially figure out the new "center"
+      // based on the mouse position and adjust the scroll position accordingly.
+      const mousePointToCenterX = x - container.scrollLeft;
+      const mousePointToCenterY = y - container.scrollTop;
+      const newX =
+        mousePointToCenterX * (newZoom / oldZoom) - mousePointToCenterX;
+      const newY =
+        mousePointToCenterY * (newZoom / oldZoom) - mousePointToCenterY;
+
+      container.scrollLeft += newX;
+      container.scrollTop += newY;
+
+      // Apply the scale to the board container
+      boardContainer.style.transform = `scale(${newZoom})`;
     },
     startDrag(event) {
       event.preventDefault();
@@ -1048,7 +1059,7 @@ export default {
 .outer-container {
   position: relative;
   overflow: hidden;
-  width: 100%;
+  width: 100vw;
   height: calc(100vh - 70px);
   display: flex;
   justify-content: center;
@@ -1056,21 +1067,26 @@ export default {
 }
 
 .scroll-container {
+  cursor: grab;
   position: relative;
   width: 100%;
   height: 100%;
   overflow: hidden;
+  box-sizing: border-box;
+}
+.scroll-container:active {
+  cursor: grabbing;
 }
 
 .board-container {
+  margin: 0 auto;
   position: relative;
   transform-origin: right;
   transition: transform 0.3s;
-  padding: 100px;
-  width: 100%;
-  height: 100%;
-  box-sizing: border-box; /* Add this line */
+  padding: 240px;
+  width: fit-content;
 }
+
 /* Help button */
 .help-button {
   position: fixed;
@@ -1141,9 +1157,10 @@ export default {
   cursor: pointer;
 }
 .cell-wrapper {
+  box-sizing: border-box;
   position: relative;
-  width: 100px;
-  height: 100px;
+  max-width: 100px;
+  max-height: 100px;
 }
 .father {
   background-color: #1d1e22f1;
