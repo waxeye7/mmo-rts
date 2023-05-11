@@ -108,6 +108,10 @@ import { v4 as uuidv4 } from "uuid";
         <span>Y:</span>
         <span>{{ selectedCell.y }}</span>
       </div>
+      <div class="info-item">
+        <span>Terrain:</span>
+        <span>{{ selectedCell.terrain }}</span>
+      </div>
       <div v-if="selectedCell.building">
         <div class="info-item">
           <span>Structure:</span>
@@ -386,7 +390,7 @@ export default {
       isModalVisible: false,
       imageMapping: {
         units: {
-          worker: "/images/units/worker.jpg",
+          worker: "/images/units/worker.png",
           axeman: "/images/units/axeman.png",
           // ... other unit types
         },
@@ -602,13 +606,17 @@ export default {
           backgroundImageUrl = "/images/buildings/tower.jpg";
         }
       } else if (cell.unit && cell.unit.unitType === "worker") {
-        backgroundImageUrl = "/images/units/worker.jpg";
+        backgroundImageUrl = "/images/units/worker.png";
       } else if (cell.unit && cell.unit.unitType === "axeman") {
         backgroundImageUrl = "/images/units/axeman.png";
       } else if (cell.resource && cell.resource.resourceType === "gold") {
         backgroundImageUrl = "/images/resources/gold.png";
-      } else {
+      } else if (cell.terrain === "plains") {
         backgroundImageUrl = "/images/terrain/grass.jpg";
+      } else if (cell.terrain === "tundra") {
+        backgroundImageUrl = "/images/terrain/tundra.jpg";
+      } else if (cell.terrain === "mountain") {
+        backgroundImageUrl = "/images/terrain/mountain.jpg";
       }
 
       if (cell.unit && cell.unit.owner !== this.user.username)
@@ -1058,10 +1066,10 @@ export default {
   position: relative;
   transform-origin: right;
   transition: transform 0.3s;
-
+  padding: 100px;
   width: 100%;
   height: 100%;
-  margin: 100px;
+  box-sizing: border-box; /* Add this line */
 }
 /* Help button */
 .help-button {
