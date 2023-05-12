@@ -1,31 +1,45 @@
 <template>
-  <div
-    v-show="!expanded"
-    @click="toggleVisibility"
-    class="curved-maximiser"
-  ></div>
+  <div>
+    <div
+      v-show="!expanded"
+      @click="toggleVisibility"
+      class="curved-maximiser"
+    ></div>
 
-  <div
-    class="actions-dashboard overflow-scroll-y"
-    :class="expanded ? 'big' : 'small'"
-  >
-    <div class="relative">
-      <div @click="toggleVisibility" v-if="expanded" class="curved-minimiser">
-        <div></div>
+    <div
+      class="actions-dashboard overflow-scroll-y"
+      :class="expanded ? 'big' : 'small'"
+    >
+      <div class="relative">
+        <div @click="toggleVisibility" v-if="expanded" class="curved-minimiser">
+          <div></div>
+        </div>
       </div>
-    </div>
-    <div class="relative">
-      <h2>Pending Actions</h2>
-      <div v-for="(action, index) in actions" :key="index" class="action-item">
-        <div v-if="action.payload && action.type">
-          <p>{{ action.type }}</p>
-          <p v-if="action.payload.targetX">
-            {{ action.payload.x }} -> {{ action.payload.targetX }}
-          </p>
-          <p v-if="action.payload.targetY">
-            {{ action.payload.y }} -> {{ action.payload.targetY }}
-          </p>
-          <button @click="cancelAction(action.id)">Cancel</button>
+      <div class="relative">
+        <h2 class="">Pending Actions</h2>
+        <div
+          v-for="(action, index) in actions"
+          :key="index"
+          class="action-item"
+        >
+          <div v-if="action.payload && action.type">
+            <div
+              :style="
+                getCellStyle(
+                  board[action.payload.targetY][action.payload.targetX]
+                )
+              "
+            ></div>
+
+            <p>{{ action.type }}</p>
+            <p v-if="action.payload.targetX">
+              {{ action.payload.x }} -> {{ action.payload.targetX }}
+            </p>
+            <p v-if="action.payload.targetY">
+              {{ action.payload.y }} -> {{ action.payload.targetY }}
+            </p>
+            <button @click="cancelAction(action.id)">Cancel</button>
+          </div>
         </div>
       </div>
     </div>
@@ -38,6 +52,14 @@ export default {
   props: {
     actions: {
       type: Array,
+      required: true,
+    },
+    board: {
+      type: Array,
+      required: true,
+    },
+    getCellStyle: {
+      type: Function,
       required: true,
     },
   },
@@ -83,9 +105,8 @@ export default {
   cursor: pointer;
 }
 .curved-minimiser div {
-  margin-left: 14px;
+  margin-left: 8px;
   margin-right: 10px;
-
   height: 4px;
   width: 20px;
   background-color: white;

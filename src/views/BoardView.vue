@@ -295,11 +295,13 @@ import { v4 as uuidv4 } from "uuid";
           </div>
         </div>
       </div>
-
+      <!-- user && user.username && user.actions.length -->
       <ActionsDashboard
         style="transition-delay: 100ms"
-        v-if="user && user.username && user.actions.length"
+        v-if="true"
         :actions="user.actions"
+        :board="board"
+        :getCellStyle="getCellStyle"
         @cancel-action="cancelAction"
       />
     </div>

@@ -277,7 +277,7 @@ const processBuildAction = async (action, userId) => {
     return;
   }
   if(!await canUserAfford(userId, structureType)) return;
-  addAction(action, userId);
+  await addAction(action, userId);
   let buildingObject = { structureType, owner: username };
   if(structureType === "structureTower") {
     buildingObject.damage = 100;
@@ -293,12 +293,13 @@ const processBuildAction = async (action, userId) => {
   await updateUserGold(userId, structureType);
 };
 
-const processTowerShootAction = async (action) => {
+const processTowerShootAction = async (action, userId) => {
   const { x, y, targetX, targetY, username } = action.payload;
 
   if (!(await isValidUser(username, userId))) {
     return;
   }
+  await addAction(action, userId);
 
   const tower = board[y][x].building;
   const target = board[targetY][targetX];
@@ -316,6 +317,7 @@ const processAxemanAttackAction = async (action, userId) => {
   if (!(await isValidUser(username, userId))) {
     return;
   }
+  await addAction(action, userId);
 
   const axeman = board[y][x].unit;
   const target = board[targetY][targetX];
@@ -335,6 +337,10 @@ const processSpawnWorkerAction = async (action, userId) => {
     return;
   }
 
+  if(!await canUserAfford(userId, "worker")) return;
+
+  await addAction(action, userId);
+
   const spawn = board[y][x].building;
   const target = board[targetY][targetX];
   if(!target) return;
@@ -353,6 +359,7 @@ const processSpawnWorkerAction = async (action, userId) => {
     hitsMax: 500,
     damage: 12,
   }
+  await updateUserGold(userId, "worker");
 };
 
 const processSpawnAxemanAction = async (action, userId) => {
@@ -364,6 +371,8 @@ const processSpawnAxemanAction = async (action, userId) => {
   }
 
   if(!await canUserAfford(userId, "axeman")) return;
+
+  await addAction(action, userId);
 
   const spawn = board[y][x].building;
   const target = board[targetY][targetX];
@@ -393,6 +402,7 @@ const processWorkerMineAction = async (action, userId) => {
   if (!(await isValidUser(username, userId))) {
     return;
   }
+  await addAction(action, userId);
   const worker = board[y][x].unit;
   const target = board[targetY][targetX];
   if(!worker) return;
@@ -427,6 +437,7 @@ const processMoveWorkerAction = async (action, userId) => {
   if (!(await isValidUser(username, userId))) {
     return;
   }
+  await addAction(action, userId);
   const worker = board[y][x].unit;
   const target = board[targetY][targetX];
   if(!worker) return;
@@ -445,6 +456,7 @@ const processMoveAxemanAction = async (action, userId) => {
   if (!(await isValidUser(username, userId))) {
     return;
   }
+  await addAction(action, userId);
   const axeman = board[y][x].unit;
   const target = board[targetY][targetX];
   if(!axeman) return;
