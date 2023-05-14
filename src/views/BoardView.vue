@@ -50,6 +50,15 @@ import { v4 as uuidv4 } from "uuid";
         <div v-if="user && user.resources" class="resource-item">
           <img
             class="resource-icon"
+            src="images/icons/stone.png"
+            style="margin-bottom: 2px"
+            alt="Stone"
+          />
+          <span>Stone: {{ user.resources.wood }}</span>
+        </div>
+        <div v-if="user && user.resources" class="resource-item">
+          <img
+            class="resource-icon"
             src="images/icons/food.png"
             style="margin-bottom: 2px"
             alt="Wood"
@@ -404,11 +413,12 @@ export default {
         },
         buildings: {
           structureSpawn: "/images/buildings/structureSpawn.png",
-          structureTower: "/images/buildings/structureTower.jpg",
+          structureTower: "/images/buildings/structureTower.png",
           // ... other building types
         },
         resources: {
           gold: "/images/resources/gold.png",
+          wood: "/images/resources/wood.png",
           // ... other resource types
         },
       },
@@ -611,7 +621,7 @@ export default {
         if (cell.building.structureType === "structureSpawn") {
           backgroundImageUrl = "/images/buildings/structureSpawn.png";
         } else if (cell.building.structureType === "structureTower") {
-          backgroundImageUrl = "/images/buildings/tower.jpg";
+          backgroundImageUrl = "/images/buildings/structureTower.png";
         }
       } else if (cell.unit && cell.unit.unitType === "worker") {
         backgroundImageUrl = "/images/units/worker.png";
@@ -619,6 +629,10 @@ export default {
         backgroundImageUrl = "/images/units/axeman.png";
       } else if (cell.resource && cell.resource.resourceType === "gold") {
         backgroundImageUrl = "/images/resources/gold.png";
+      } else if (cell.resource && cell.resource.resourceType === "wood") {
+        backgroundImageUrl = "/images/resources/wood.png";
+      } else if (cell.resource && cell.resource.resourceType === "stone") {
+        backgroundImageUrl = "/images/resources/stone.webp";
       } else if (cell.terrain === "plains") {
         backgroundImageUrl = "/images/terrain/grass.png";
       } else if (cell.terrain === "tundra") {

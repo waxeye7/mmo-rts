@@ -239,6 +239,11 @@ const processActions = async () => {
         if(cell.building.hits <= 0) {
           cell.building = null;
         }
+        else if(cell.building.structureType === "structureSpawn") {
+          if(cell.building.spawning) {
+            cell.building.spawning = false;
+          }
+        }
       }
     }
   }
@@ -291,7 +296,7 @@ const processBuildAction = async (action, userId) => {
   }
 
   board[y][x].building = buildingObject;
-  await updateUserGold(userId, structureType);
+  await updateUserGold(userId, structureType, false);
 };
 
 const processTowerShootAction = async (action, userId) => {
@@ -300,9 +305,6 @@ const processTowerShootAction = async (action, userId) => {
   if (!(await isValidUser(username, userId))) {
     return;
   }
-
-
-
 
   const tower = board[y][x].building;
   const target = board[targetY][targetX];
@@ -368,7 +370,7 @@ const processSpawnWorkerAction = async (action, userId) => {
     moved:false
   }
   spawn.spawning = true;
-  await updateUserGold(userId, "worker");
+  await updateUserGold(userId, "worker", false);
 };
 
 const processSpawnAxemanAction = async (action, userId) => {
@@ -406,7 +408,7 @@ const processSpawnAxemanAction = async (action, userId) => {
     nonMoveActions:1,
     moved:false
   }
-  await updateUserGold(userId, "axeman");
+  await updateUserGold(userId, "axeman", false);
 
 };
 
@@ -416,37 +418,34 @@ const processWorkerMineAction = async (action, userId) => {
   if (!(await isValidUser(username, userId))) {
     return;
   }
+
+  if (!board[y] || !board[y][x] || !board[y][x].unit) {
+    console.error(`Invalid worker position: ${x}, ${y}`);
+    return;
+  }
+
   const worker = board[y][x].unit;
   const target = board[targetY][targetX];
-
   if(!worker) return;
   if(!target) return;
   if(worker.unitType !== "worker") return;
+
   if(worker.owner !== username) return;
   if(!target.resource) return;
-  if(worker.nonMoveActions <= 0) {
+
+  if(worker.nonMoveActions && worker.nonMoveActions <= 0) {
+
     console.log("worker out of non move actions")
     return;
   }
-  spawn.spawning = true;
+
+
   const goldToAdd = 80;
+
   // Update the user's resources.gold property in the database
-  const updatedUser = await User.findByIdAndUpdate(
-    userId,
-    { $inc: { "resources.gold": goldToAdd } },
-    { new: true, useFindAndModify: false }
-  );
+  await updateUserGold(userId, goldToAdd, true);
 
-  // Check if the user was updated successfully
-  if (!updatedUser) {
-    console.error(`Failed to update resources for user: ${username}, ${userId}`);
-    return;
-  }
 
-  // Send the updated user data to the client
-  if (userSockets[userId]) {
-    userSockets[userId].emit('updateUser', updatedUser);
-  }
 };
 
 const processMoveWorkerAction = async (action, userId) => {

@@ -27,7 +27,15 @@
           <div
             @click="cancelAction(action.id)"
             class="action-container"
-            v-if="action.payload && action.type"
+            v-if="
+              action &&
+              action.payload &&
+              action.type &&
+              action.payload.x &&
+              action.payload.y &&
+              action.username &&
+              action.id
+            "
           >
             <div class="content-wrapper">
               <h3 class="action-type text-align-center">
@@ -58,7 +66,12 @@
                 <p v-if="action.payload.targetX">
                   x:{{ action.payload.x }}, y:{{ action.payload.y }}
                 </p>
-                <p>&nbsp;->&nbsp;</p>
+                <img
+                  v-if="action.payload.targetX && action.payload.targetY"
+                  style="width: 18px; height: 18px; margin: auto 0"
+                  src="../../public/images/icons/arrow-right.png"
+                  alt=""
+                />
                 <p v-if="action.payload.targetY">
                   x:{{ action.payload.targetX }}, y:{{ action.payload.targetY }}
                 </p>
@@ -235,5 +248,8 @@ button {
 
 .action-container:hover .cancel-action {
   opacity: 1;
+}
+p {
+  margin: 8px 0;
 }
 </style>
