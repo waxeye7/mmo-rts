@@ -2,7 +2,7 @@ const Board = require("../../models/board");
 
 const createBoard = async () => {
   const size = 20;
-  const gridSize = 5;
+  const gridSize = 6;
   const newBoard = new Array(size);
   const terrains = ["plains", "tundra", "mountain"]; // List of terrain types
 
@@ -21,10 +21,10 @@ const createBoard = async () => {
   }
 
   // Terrain generation for biomes
-  for (let y = 0; y < size; y += Math.floor(Math.random() * 5 + 3)) {
-    for (let x = 0; x < size; x += Math.floor(Math.random() * 5 + 3)) {
-      const biomeSizeY = Math.min(Math.floor(Math.random() * 5 + 3), size - y);
-      const biomeSizeX = Math.min(Math.floor(Math.random() * 5 + 3), size - x);
+  for (let y = 0; y < size; y += Math.floor(Math.random() * 3 + 2)) {
+    for (let x = 0; x < size; x += Math.floor(Math.random() * 3 + 2)) {
+      const biomeSizeY = Math.min(Math.floor(Math.random() * 3 + 2), size - y);
+      const biomeSizeX = Math.min(Math.floor(Math.random() * 3 + 2), size - x);
       const terrain = terrains[Math.floor(Math.random() * terrains.length)]; // Assign a random terrain
       for (let by = y; by < y + biomeSizeY; by++) {
         for (let bx = x; bx < x + biomeSizeX; bx++) {

@@ -100,102 +100,109 @@ import { v4 as uuidv4 } from "uuid";
           :zoom="null"
         />
       </div>
-      <div class="info-item">
-        <span>X:</span>
-        <span>{{ selectedCell.x }}</span>
-      </div>
-      <div class="info-item">
-        <span>Y:</span>
-        <span>{{ selectedCell.y }}</span>
-      </div>
-      <div class="info-item">
-        <span>Terrain:</span>
-        <span>{{ selectedCell.terrain }}</span>
-      </div>
-      <div v-if="selectedCell.building">
+      <div class="first-part-info">
         <div class="info-item">
-          <span>Structure:</span>
-          <span>{{ selectedCell.building.structureType }}</span>
+          <span>X:</span>
+          <span>{{ selectedCell.x }}</span>
         </div>
         <div class="info-item">
-          <span>Owner:</span>
-          <span>{{ selectedCell.building.owner }}</span>
+          <span>Y:</span>
+          <span>{{ selectedCell.y }}</span>
         </div>
         <div class="info-item">
-          <span>Hits:</span>
-          <span
-            >{{ selectedCell.building.hits }}/{{
-              selectedCell.building.hitsMax
-            }}</span
-          >
+          <span>Terrain:</span>
+          <span>{{ selectedCell.terrain }}</span>
         </div>
-
-        <div class="info-item">
-          <span>Damage:</span>
-          <span>{{ selectedCell.building.damage }}</span>
-        </div>
-      </div>
-      <div v-if="selectedCell.unit">
-        <div class="info-item">
-          <span>Unit:</span>
-          <span>{{ selectedCell.unit.unitType }}</span>
-        </div>
-        <div class="info-item">
-          <span>Owner:</span>
-          <span>{{ selectedCell.unit.owner }}</span>
-        </div>
-        <div class="info-item">
-          <span>Hits:</span>
-          <span
-            >{{ selectedCell.unit.hits }}/{{ selectedCell.unit.hitsMax }}</span
-          >
-        </div>
-
-        <div class="info-item">
-          <span>Damage:</span>
-          <span>{{ selectedCell.unit.damage }}</span>
-        </div>
-      </div>
-      <div v-if="selectedCell.resource">
-        <div class="info-item">
-          <span>Resource:</span>
-          <span>{{ selectedCell.resource.resourceType }}</span>
-        </div>
-      </div>
-      <div class="info-item info-section-image">
-        <img v-if="imageSource" :src="imageSource" />
-      </div>
-      <div v-if="selectedCell.building" class="info-item">
-        <div class="progress-bar">
-          <div
-            class="progress-bar-inner"
-            :style="{
-              width:
-                (selectedCell.building.hits / selectedCell.building.hitsMax) *
-                  100 +
-                '%',
-              backgroundColor: getHitsColor(
-                selectedCell.building.hits,
+        <div v-if="selectedCell.building">
+          <div class="info-item">
+            <span>Structure:</span>
+            <span>{{ selectedCell.building.structureType }}</span>
+          </div>
+          <div class="info-item">
+            <span>Owner:</span>
+            <span>{{ selectedCell.building.owner }}</span>
+          </div>
+          <div class="info-item">
+            <span>Hits:</span>
+            <span
+              >{{ selectedCell.building.hits }}/{{
                 selectedCell.building.hitsMax
-              ),
-            }"
-          ></div>
+              }}</span
+            >
+          </div>
+
+          <div class="info-item">
+            <span>Damage:</span>
+            <span>{{ selectedCell.building.damage }}</span>
+          </div>
+        </div>
+        <div v-if="selectedCell.unit">
+          <div class="info-item">
+            <span>Unit:</span>
+            <span>{{ selectedCell.unit.unitType }}</span>
+          </div>
+          <div class="info-item">
+            <span>Owner:</span>
+            <span>{{ selectedCell.unit.owner }}</span>
+          </div>
+          <div class="info-item">
+            <span>Hits:</span>
+            <span
+              >{{ selectedCell.unit.hits }}/{{
+                selectedCell.unit.hitsMax
+              }}</span
+            >
+          </div>
+
+          <div class="info-item">
+            <span>Damage:</span>
+            <span>{{ selectedCell.unit.damage }}</span>
+          </div>
+        </div>
+        <div v-if="selectedCell.resource">
+          <div class="info-item">
+            <span>Resource:</span>
+            <span>{{ selectedCell.resource.resourceType }}</span>
+          </div>
         </div>
       </div>
-      <div v-if="selectedCell.unit" class="info-item">
-        <div class="progress-bar">
-          <div
-            class="progress-bar-inner"
-            :style="{
-              width:
-                (selectedCell.unit.hits / selectedCell.unit.hitsMax) * 100 +
-                '%',
-              backgroundColor: getHitsColor(
-                selectedCell.unit.hits,
-                selectedCell.unit.hitsMax
-              ),
-            }"
-          ></div>
+
+      <div class="second-part-info">
+        <div class="info-item info-section-image">
+          <img v-if="imageSource" :src="imageSource" />
+        </div>
+        <div v-if="selectedCell.building" class="info-item">
+          <div class="progress-bar">
+            <div
+              class="progress-bar-inner"
+              :style="{
+                width:
+                  (selectedCell.building.hits / selectedCell.building.hitsMax) *
+                    100 +
+                  '%',
+                backgroundColor: getHitsColor(
+                  selectedCell.building.hits,
+                  selectedCell.building.hitsMax
+                ),
+              }"
+            ></div>
+          </div>
+        </div>
+        <div v-if="selectedCell.unit" class="info-item">
+          <div class="progress-bar">
+            <div
+              class="progress-bar-inner"
+              :style="{
+                width:
+                  (selectedCell.unit.hits / selectedCell.unit.hitsMax) * 100 +
+                  '%',
+                backgroundColor: getHitsColor(
+                  selectedCell.unit.hits,
+                  selectedCell.unit.hitsMax
+                ),
+              }"
+            ></div>
+          </div>
         </div>
       </div>
 
@@ -295,10 +302,9 @@ import { v4 as uuidv4 } from "uuid";
           </div>
         </div>
       </div>
-      <!-- user && user.username && user.actions.length -->
       <ActionsDashboard
         style="transition-delay: 100ms"
-        v-if="true"
+        v-if="user && user.username && user.actions.length"
         :actions="user.actions"
         :board="board"
         :getCellStyle="getCellStyle"
@@ -397,8 +403,8 @@ export default {
           // ... other unit types
         },
         buildings: {
-          structureSpawn: "/images/buildings/hut.png",
-          structureTower: "/images/buildings/tower.jpg",
+          structureSpawn: "/images/buildings/structureSpawn.png",
+          structureTower: "/images/buildings/structureTower.jpg",
           // ... other building types
         },
         resources: {
@@ -603,7 +609,7 @@ export default {
 
       if (cell.building) {
         if (cell.building.structureType === "structureSpawn") {
-          backgroundImageUrl = "/images/buildings/hut.png";
+          backgroundImageUrl = "/images/buildings/structureSpawn.png";
         } else if (cell.building.structureType === "structureTower") {
           backgroundImageUrl = "/images/buildings/tower.jpg";
         }
@@ -614,11 +620,11 @@ export default {
       } else if (cell.resource && cell.resource.resourceType === "gold") {
         backgroundImageUrl = "/images/resources/gold.png";
       } else if (cell.terrain === "plains") {
-        backgroundImageUrl = "/images/terrain/grass.jpg";
+        backgroundImageUrl = "/images/terrain/grass.png";
       } else if (cell.terrain === "tundra") {
-        backgroundImageUrl = "/images/terrain/tundra.jpg";
+        backgroundImageUrl = "/images/terrain/tundra.png";
       } else if (cell.terrain === "mountain") {
-        backgroundImageUrl = "/images/terrain/mountain.jpg";
+        backgroundImageUrl = "/images/terrain/mountain.png";
       }
 
       if (cell.unit && cell.unit.owner !== this.user.username)
@@ -1044,19 +1050,21 @@ export default {
   justify-content: space-between;
   align-items: center;
 }
+
+.first-part-info {
+  min-height: 154px;
+}
 .info-section-image {
-  width: 240px;
-  max-height: 200px;
+  max-height: 240px;
   display: flex;
   align-items: center;
   justify-content: center;
   overflow: hidden;
 }
-
 .info-section-image img {
-  object-fit: contain;
-  max-width: 100%;
-  max-height: 100%;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 .outer-container {
   position: relative;

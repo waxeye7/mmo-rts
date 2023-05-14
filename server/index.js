@@ -287,6 +287,7 @@ const processBuildAction = async (action, userId) => {
   else if(structureType === "structureSpawn") {
     buildingObject.hits = 5000;
     buildingObject.hitsMax = 5000;
+    buildingObject.spawning = false;
   }
 
   board[y][x].building = buildingObject;
@@ -299,7 +300,9 @@ const processTowerShootAction = async (action, userId) => {
   if (!(await isValidUser(username, userId))) {
     return;
   }
-  await addAction(action, userId);
+
+
+
 
   const tower = board[y][x].building;
   const target = board[targetY][targetX];
@@ -317,7 +320,6 @@ const processAxemanAttackAction = async (action, userId) => {
   if (!(await isValidUser(username, userId))) {
     return;
   }
-  await addAction(action, userId);
 
   const axeman = board[y][x].unit;
   const target = board[targetY][targetX];
@@ -327,6 +329,7 @@ const processAxemanAttackAction = async (action, userId) => {
   if(axeman.unitType !== "axeman") return;
   if(target.unit) target.unit.hits -= axeman.damage;
   if(target.building) target.building.hits -= axeman.damage;
+  
 };
 
 const processSpawnWorkerAction = async (action, userId) => {
@@ -339,7 +342,6 @@ const processSpawnWorkerAction = async (action, userId) => {
 
   if(!await canUserAfford(userId, "worker")) return;
 
-  await addAction(action, userId);
 
   const spawn = board[y][x].building;
   const target = board[targetY][targetX];
@@ -348,6 +350,10 @@ const processSpawnWorkerAction = async (action, userId) => {
   if(spawn.owner !== username) return;
   if(spawn.structureType !== "structureSpawn") return;
   if(checkIfCellIsOccupied(targetX,targetY)) return;
+  if(spawn.spawning) {
+    console.log("spawn already spawning")
+    return;
+  }
   target.unit = {
     unitType: "worker",
     pos: {
@@ -358,7 +364,10 @@ const processSpawnWorkerAction = async (action, userId) => {
     hits: 500,
     hitsMax: 500,
     damage: 12,
+    nonMoveActions:1,
+    moved:false
   }
+  spawn.spawning = true;
   await updateUserGold(userId, "worker");
 };
 
@@ -372,7 +381,6 @@ const processSpawnAxemanAction = async (action, userId) => {
 
   if(!await canUserAfford(userId, "axeman")) return;
 
-  await addAction(action, userId);
 
   const spawn = board[y][x].building;
   const target = board[targetY][targetX];
@@ -381,6 +389,10 @@ const processSpawnAxemanAction = async (action, userId) => {
   if(spawn.owner !== username) return;
   if(spawn.structureType !== "structureSpawn") return;
   if(checkIfCellIsOccupied(targetX,targetY)) return;
+  if(spawn.spawning) {
+    console.log("spawn already spawning")
+    return;
+  }
   target.unit = {
     unitType: "axeman",
     pos: {
@@ -391,6 +403,8 @@ const processSpawnAxemanAction = async (action, userId) => {
     hits: 1000,
     hitsMax: 1000,
     damage: 50,
+    nonMoveActions:1,
+    moved:false
   }
   await updateUserGold(userId, "axeman");
 
@@ -402,15 +416,19 @@ const processWorkerMineAction = async (action, userId) => {
   if (!(await isValidUser(username, userId))) {
     return;
   }
-  await addAction(action, userId);
   const worker = board[y][x].unit;
   const target = board[targetY][targetX];
+
   if(!worker) return;
   if(!target) return;
   if(worker.unitType !== "worker") return;
   if(worker.owner !== username) return;
   if(!target.resource) return;
-
+  if(worker.nonMoveActions <= 0) {
+    console.log("worker out of non move actions")
+    return;
+  }
+  spawn.spawning = true;
   const goldToAdd = 80;
   // Update the user's resources.gold property in the database
   const updatedUser = await User.findByIdAndUpdate(
@@ -437,7 +455,6 @@ const processMoveWorkerAction = async (action, userId) => {
   if (!(await isValidUser(username, userId))) {
     return;
   }
-  await addAction(action, userId);
   const worker = board[y][x].unit;
   const target = board[targetY][targetX];
   if(!worker) return;
@@ -456,7 +473,6 @@ const processMoveAxemanAction = async (action, userId) => {
   if (!(await isValidUser(username, userId))) {
     return;
   }
-  await addAction(action, userId);
   const axeman = board[y][x].unit;
   const target = board[targetY][targetX];
   if(!axeman) return;

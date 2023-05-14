@@ -16,29 +16,57 @@
         </div>
       </div>
       <div class="relative">
-        <h2 class="">Pending Actions</h2>
+        <h2 style="margin: -6px 0 14px 0px" class="text-align-center">
+          Pending Actions
+        </h2>
         <div
           v-for="(action, index) in actions"
           :key="index"
           class="action-item"
         >
-          <div v-if="action.payload && action.type">
-            <div
-              :style="
-                getCellStyle(
-                  board[action.payload.targetY][action.payload.targetX]
-                )
-              "
-            ></div>
+          <div
+            @click="cancelAction(action.id)"
+            class="action-container"
+            v-if="action.payload && action.type"
+          >
+            <div class="content-wrapper">
+              <h3 class="action-type text-align-center">
+                {{ action.type }}
+              </h3>
 
-            <p>{{ action.type }}</p>
-            <p v-if="action.payload.targetX">
-              {{ action.payload.x }} -> {{ action.payload.targetX }}
-            </p>
-            <p v-if="action.payload.targetY">
-              {{ action.payload.y }} -> {{ action.payload.targetY }}
-            </p>
-            <button @click="cancelAction(action.id)">Cancel</button>
+              <div class="flex">
+                <div
+                  v-if="board && action.payload.x && action.payload.y"
+                  class="cell-wrapper"
+                  :style="
+                    getCellStyle(board[action.payload.y][action.payload.x])
+                  "
+                ></div>
+                <div
+                  v-if="action.payload.targetX && action.payload.targetY"
+                  class="cell-wrapper"
+                  style="margin-left: 1px"
+                  :style="
+                    getCellStyle(
+                      board[action.payload.targetY][action.payload.targetX]
+                    )
+                  "
+                ></div>
+              </div>
+
+              <div class="flex justify-content-center">
+                <p v-if="action.payload.targetX">
+                  x:{{ action.payload.x }}, y:{{ action.payload.y }}
+                </p>
+                <p>&nbsp;->&nbsp;</p>
+                <p v-if="action.payload.targetY">
+                  x:{{ action.payload.targetX }}, y:{{ action.payload.targetY }}
+                </p>
+              </div>
+            </div>
+
+            <div class="cancel-action">Cancel Action</div>
+            <div class="cover"></div>
           </div>
         </div>
       </div>
@@ -80,6 +108,17 @@ export default {
 </script>
 
 <style scoped>
+h2 {
+  margin: 0;
+}
+.cell-wrapper {
+  max-height: 80px;
+  max-width: 80px;
+}
+.cell-wrapper div {
+  height: 100%;
+  width: 100%;
+}
 .curved-maximiser {
   position: absolute;
   height: 100px;
@@ -143,7 +182,7 @@ button {
 }
 .big {
   width: 260px;
-  height: 290px;
+  height: 300px;
 }
 .small {
   height: 20px;
@@ -152,5 +191,49 @@ button {
 }
 .small * {
   display: none;
+}
+.action-container {
+  cursor: pointer;
+  padding: 4px 20px;
+  position: relative; /* Needed for absolute positioning of cancel-action */
+  margin: 0 auto;
+  transition: background-color 0.3s ease; /* This will animate the background color */
+}
+
+.content-wrapper {
+  opacity: 1;
+  transition: opacity 0.3s ease;
+}
+
+.cancel-action {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  pointer-events: none; /* Prevents click events on this element when it's not visible */
+  font-size: 20px;
+  text-align: center;
+  width: 100%;
+  padding: 4px 0;
+  background-color: rgba(0, 0, 0, 1);
+}
+
+.action-container:hover {
+  background-color: rgba(
+    0,
+    0,
+    0,
+    0.9
+  ); /* Your hover background color, semi-transparent black in this case */
+}
+
+.action-container:hover .content-wrapper {
+  opacity: 0.75;
+}
+
+.action-container:hover .cancel-action {
+  opacity: 1;
 }
 </style>
