@@ -1,32 +1,25 @@
 const jwt = require("jsonwebtoken");
 const User = require("../../models/user");
-const me = async (req, res) => {
-  const authHeader = req.headers.authorization;
 
-  if (authHeader) {
-    const token = authHeader.split(" ")[1];
+const me = async (req, res) => {
+  const token = req.cookies.token;
+  
+  if (token) {
     try {
       const decoded = jwt.verify(token, process.env.AUTH_SECRET_KEY);
 
-      req.userId = decoded.id;
-
-      const user = await User.findOne({ _id: decoded.id });
+      const user = await User.findOne({ _id: decoded.id }).select(
+        "username actions resources -_id"
+      );
       if (!user) {
         throw new Error("User not found");
       }
-
-      return res.status(200).json({
-        message: "authentication successful, lol",
-      });
+      return res.json(user); // Send the user's data
     } catch (error) {
-      return res
-        .status(401)
-        .json({ message: "authentication failed - invalid token lol" });
+      return res.status(401).json({ message: "authentication failed - invalid token" });
     }
   } else {
-    return res
-      .status(401)
-      .json({ message: "authentication failed - no token lol" });
+    return res.status(401).json({ message: "authentication failed - no token provided" });
   }
 };
 

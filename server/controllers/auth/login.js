@@ -20,10 +20,17 @@ const login = async (req, res) => {
       { id: user._id },
       process.env.AUTH_SECRET_KEY
     );
+    res.cookie('token', token, {
+      httpOnly: true, 
+      // secure: true, 
+      sameSite:'Strict',
+      maxAge: 7200000 // expires after 2 hours
+    });
     res.json({
       message: "User logged in successfully",
-      token
+      // token
     });
+
   } catch (error) {
     console.error("Error in login:", error);
     res.status(500).json({ message: "Error logging in user." });

@@ -37,9 +37,15 @@ const signup = async (req, res) => {
       { id: newUser._id },
       process.env.AUTH_SECRET_KEY
     );
+    res.cookie('token', token, {
+      httpOnly: true, 
+      // secure: true, 
+      sameSite:'Strict',
+      maxAge: 7200000 // expires after 2 hours
+    });
     res.json({
       message: "User created successfully",
-      token
+      // token
     });
   } catch (error) {
     console.error("Error in sign up:", error);

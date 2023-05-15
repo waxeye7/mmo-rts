@@ -1,3 +1,5 @@
 make yellow effect on move on cell with unit because the action could be cancelled
 make data visual more than text
 archers
+jwt not seesionstorage
+background homepageP

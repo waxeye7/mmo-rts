@@ -7,10 +7,10 @@ const { getUser, updateUser, me, getAllUserIdentifiers, deleteAction } = require
 router.put("/:id", jwtMiddleware, updateUser);
 
 // GET my authenticated user
-router.get("/me", jwtMiddleware, me);
+router.get("/me", me);
 
 // GET all users usernames and identifiers
-router.get("/all", jwtMiddleware, getAllUserIdentifiers);
+router.get("/all", getAllUserIdentifiers);
 
 // GET a User by ID
 router.get("/getone/:id", jwtMiddleware, getUser);

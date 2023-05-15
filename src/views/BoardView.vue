@@ -2,8 +2,8 @@
 import UserIdentifier from "../components/UserIdentifier.vue";
 import ActionBubble from "../components/ActionBubble.vue";
 import ActionsDashboard from "../components/ActionsDashboard.vue";
-import jwt_decode from "jwt-decode";
 import { v4 as uuidv4 } from "uuid";
+import { io } from "socket.io-client";
 </script>
 
 <template>
@@ -11,8 +11,9 @@ import { v4 as uuidv4 } from "uuid";
     <div class="header-container">
       <div class="left-section">
         <UserIdentifier
-          style="margin-right: 10px"
           v-if="user && user.username && userIdentifierInfo[user.username]"
+          y
+          style="margin-right: 10px"
           :backgroundColor="userIdentifierInfo[user.username].backgroundColor"
           :shape="userIdentifierInfo[user.username].shape"
           :fillColor="userIdentifierInfo[user.username].fillColor"
@@ -312,8 +313,8 @@ import { v4 as uuidv4 } from "uuid";
         </div>
       </div>
       <ActionsDashboard
+        v-if="user && user.username && user.actions && user.actions.length"
         style="transition-delay: 100ms"
-        v-if="user && user.username && user.actions.length"
         :actions="user.actions"
         :board="board"
         :getCellStyle="getCellStyle"
@@ -398,7 +399,7 @@ export default {
       actionPopup: false,
       selectedActionType: null,
       timer: 0,
-      zoom: 1,
+      zoom: 0.4,
       originX: 0,
       originY: 0,
       dragging: false,
@@ -419,6 +420,8 @@ export default {
         resources: {
           gold: "/images/resources/gold.png",
           wood: "/images/resources/wood.png",
+          stone: "images/resources/stone.png",
+          food: "images/resources/food.png",
           // ... other resource types
         },
       },
@@ -453,14 +456,20 @@ export default {
     },
   },
   methods: {
-    sendAction(action) {
-      const token = sessionStorage.getItem("token");
-      if (!token) {
-        console.log("No token");
-        this.logout();
-        return;
+    connectToSocket() {
+      // Disconnect the current socket if it exists
+      if (this.$socket) {
+        this.$socket.disconnect();
       }
-      this.$socket.emit("action", action, token);
+
+      // Connect to the socket
+      this.$socket = io("http://localhost:3000", { withCredentials: true });
+
+      // Emit the loggedIn event
+      this.$socket.emit("loggedIn");
+    },
+    sendAction(action) {
+      this.$socket.emit("action", action);
     },
     handleAction(action) {
       const buildAction = (action) => {
@@ -602,10 +611,8 @@ export default {
 
       if (cell.unit || cell.building) {
         const ownedByUser =
-          (this.user && cell.unit && cell.unit.owner === this.user.username) ||
-          (this.user &&
-            cell.building &&
-            cell.building.owner === this.user.username);
+          (cell.unit && cell.unit.owner === this.user?.username) ||
+          (cell.building && cell.building.owner === this.user?.username);
         baseStyle.border = ownedByUser ? "2px solid green" : "2px solid red";
       }
 
@@ -632,7 +639,7 @@ export default {
       } else if (cell.resource && cell.resource.resourceType === "wood") {
         backgroundImageUrl = "/images/resources/wood.png";
       } else if (cell.resource && cell.resource.resourceType === "stone") {
-        backgroundImageUrl = "/images/resources/stone.webp";
+        backgroundImageUrl = "/images/resources/stone.png";
       } else if (cell.terrain === "plains") {
         backgroundImageUrl = "/images/terrain/grass.png";
       } else if (cell.terrain === "tundra") {
@@ -641,7 +648,7 @@ export default {
         backgroundImageUrl = "/images/terrain/mountain.png";
       }
 
-      if (cell.unit && cell.unit.owner !== this.user.username)
+      if (cell.unit && cell.unit.owner !== this.user?.username)
         baseStyle.backgroundColor = "red";
 
       if (backgroundImageUrl) {
@@ -704,37 +711,20 @@ export default {
       return xDistance <= range && yDistance <= range;
     },
     async fetchUserById() {
-      const token = sessionStorage.getItem("token");
-      if (!token) {
-        this.logout();
-        return;
-      }
-      const decoded = jwt_decode(token);
-      if (!decoded) {
-        this.logout();
-        return;
-      }
-      this.userId = decoded.id;
-
       try {
-        const response = await fetch(
-          `http://localhost:3000/users/getone/${this.userId}`,
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          }
-        );
+        const response = await fetch(`http://localhost:3000/users/me`, {
+          credentials: "include", // This is required to include the cookie in the request.
+        });
 
         if (!response.ok) {
           throw new Error(`HTTP error: ${response.status}`);
         }
-
         const user = await response.json();
         this.user = user;
         console.log(user);
       } catch (error) {
         console.error("Error fetching user by ID:", error);
+        this.logout();
       }
     },
     selectCell(cell) {
@@ -800,9 +790,20 @@ export default {
     sendAlert(message) {
       alert(message);
     },
-    logout() {
-      sessionStorage.removeItem("token");
-      this.$router.push("/login");
+    async logout() {
+      try {
+        const response = await fetch(`http://localhost:3000/auth/logout`, {
+          method: "GET",
+          credentials: "include",
+        });
+        if (!response.ok) {
+          throw new Error("Error logging out.");
+        }
+        this.$router.push("/login");
+      } catch (error) {
+        console.error("Error logging out:", error);
+        alert("Error logging out. Please try again.");
+      }
     },
     showModal() {
       this.isModalVisible = true;
@@ -821,17 +822,9 @@ export default {
       }
     },
     async getAllUserIdentifiers() {
-      const token = sessionStorage.getItem("token");
-      if (!token) {
-        console.log("No token");
-        this.logout();
-        return;
-      }
       try {
         const response = await fetch(`http://localhost:3000/users/all`, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
+          credentials: "include",
         });
 
         if (!response.ok) {
@@ -842,15 +835,10 @@ export default {
         this.userIdentifierInfo = usersInfo;
       } catch (error) {
         console.error("Error fetching user by ID:", error);
+        this.logout();
       }
     },
     async cancelAction(id) {
-      const token = sessionStorage.getItem("token");
-      if (!token) {
-        console.log("No token");
-        this.logout();
-        return;
-      }
       try {
         const response = await fetch(
           `http://localhost:3000/users/actions/${id}`,
@@ -858,8 +846,8 @@ export default {
             method: "DELETE",
             headers: {
               "Content-Type": "application/json",
-              Authorization: `Bearer ${token}`,
             },
+            credentials: "include",
           }
         );
 
@@ -872,6 +860,7 @@ export default {
         }
       } catch (error) {
         console.error(`Failed to cancel action: ${error}`);
+        this.logout();
       }
     },
   },
@@ -896,6 +885,7 @@ export default {
       .addEventListener("mouseleave", this.handleMouseUp);
   },
   async created() {
+    this.connectToSocket();
     // get signed in user's object
     await this.fetchUserById();
 
@@ -922,14 +912,13 @@ export default {
 
     this.$socket.on("serverRestart", () => {
       alert("You have been logged out due to a server restart.");
-      sessionStorage.removeItem("token");
-      this.$router.push("/login");
+
+      this.logout();
     });
 
     this.$socket.on("authentication_error", () => {
       alert("You have been logged out due to an authentication error.");
-      sessionStorage.removeItem("token");
-      this.$router.push("/login");
+      this.logout();
     });
 
     // Listen for 'warning' and 'forceLogout' events
@@ -1185,6 +1174,7 @@ export default {
   position: relative;
   max-width: 100px;
   max-height: 100px;
+  margin: 0;
 }
 .father {
   background-color: #1d1e22f1;

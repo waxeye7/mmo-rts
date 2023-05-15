@@ -7,11 +7,12 @@
     ></div>
 
     <div
+      v-if="actions && board && getCellStyle"
       class="actions-dashboard overflow-scroll-y"
       :class="expanded ? 'big' : 'small'"
     >
       <div class="relative">
-        <div @click="toggleVisibility" v-if="expanded" class="curved-minimiser">
+        <div v-if="expanded" @click="toggleVisibility" class="curved-minimiser">
           <div></div>
         </div>
       </div>
@@ -25,17 +26,17 @@
           class="action-item"
         >
           <div
-            @click="cancelAction(action.id)"
-            class="action-container"
             v-if="
               action &&
               action.payload &&
               action.type &&
               action.payload.x &&
               action.payload.y &&
-              action.username &&
+              action.payload.username &&
               action.id
             "
+            @click="cancelAction(action.id)"
+            class="action-container"
           >
             <div class="content-wrapper">
               <h3 class="action-type text-align-center">
@@ -44,7 +45,13 @@
 
               <div class="flex">
                 <div
-                  v-if="board && action.payload.x && action.payload.y"
+                  v-if="
+                    board &&
+                    action &&
+                    action.payload &&
+                    action?.payload?.x &&
+                    action?.payload?.y
+                  "
                   class="cell-wrapper"
                   :style="
                     getCellStyle(board[action.payload.y][action.payload.x])
@@ -149,7 +156,7 @@ h2 {
   height: 30px;
   width: fit-content;
   background-color: #1d1e22;
-  border-radius: 6px 0 0 0;
+  /* border-radius: 6px 0 0 0; */
   display: flex;
   justify-content: center;
   align-items: center;
@@ -162,7 +169,6 @@ h2 {
   height: 4px;
   width: 20px;
   background-color: white;
-  border-radius: 4px;
 }
 .curved-minimiser:hover {
   background-color: white;
@@ -182,6 +188,11 @@ h2 {
   border-radius: 6px 0 0 0;
   width: 260px;
   transition: all 0.5s ease;
+  -ms-overflow-style: none; /* Internet Explorer and Edge */
+  scrollbar-width: none; /* Firefox */
+}
+.actions-dashboard::-webkit-scrollbar {
+  display: none;
 }
 
 .action-item {
@@ -195,7 +206,7 @@ button {
 }
 .big {
   width: 260px;
-  height: 300px;
+  height: calc(97vh - 70px);
 }
 .small {
   height: 20px;

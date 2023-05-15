@@ -10,10 +10,11 @@ const loadNextTaskTimestamp = require('./controllers/taskTimestamp/loadNextTaskT
 const addAction = require('./controllers/user/addAction');
 const User = require('./models/user');
 const canUserAfford = require('./controllers/user/canUserAfford');
-const updateUserGold = require('./controllers/user/updateUserGold');
+const updateUserResources = require('./controllers/user/updateUserResources');
 const getCost = require('../CONSTANTS/getCost');
 const { moveActionsQueue, nonMoveActionsQueue } = require('./actionsQueue');
-
+const jwt = require('jsonwebtoken');
+const cookie = require('cookie');
 
 
 mongoose.connect(url, { useNewUrlParser: true })
@@ -58,52 +59,88 @@ io.use((socket, next) => {
 });
 
 // Configure CORS for Express
-app.use(cors({ origin: 'http://localhost:8080' }));
+app.use(cors({
+  origin: 'http://localhost:8080',
+  methods: ['GET', 'POST', 'PUT'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: true
+}));
 
+const cookieParser = require('cookie-parser');
+app.use(cookieParser());
 
 // Serve the Vue.js app
 app.use(express.static('dist'));
 
+let numUsers = 0;
+
 // Handle Socket.IO connections
 io.on('connection', (socket) => {
+  numUsers++;
   console.log('A user connected', socket.id);
+  io.emit('user count', numUsers);
 
-  // Add your game's server-side code here
+  
 
-  // Send the initial board state to the client
-
-  // socket.emit('updateBoard', board);
-  // socket.emit('updateTimer', timerValue);
-
-  // Listen for a request to get the initial values
   socket.on('getInitialValues', () => {
     socket.emit('updateBoard', board);
     broadcastRemainingTime();
   });
 
   // Listen for actions from the client
-  socket.on('action', (action, token) => {
-    const userId = verifyToken(token);
-  
+  socket.on('action', (action) => {
+    let userId;
+    for (const [id, userSocket] of Object.entries(userSockets)) {
+      if (userSocket === socket) {
+        userId = id;
+        break;
+      }
+    }
+
     if (!userId) {
-      // Send a response back to the client indicating that the authentication failed
-      socket.emit('authentication_error');
+      socket.emit("authentication_error");
+      socket.disconnect();
       return;
     }
   
-    // At this point, the token is valid and we have the userId
-    // You can now proceed with handling the action
     handleAction(socket, action, userId);
   });
 
   // Listen for the 'loggedIn' event
-  socket.on("loggedIn", (userId) => {
-    // Store the user's socket using their user ID as the key
-    userSockets[userId] = socket;
+  socket.on("loggedIn", () => {
+    // Parse the cookie from the handshake request
+    const cookies = cookie.parse(socket.handshake.headers.cookie || '');
+    const token = cookies.token;
+    console.log(token)
+
+    if (token) {
+      // Verify the JWT and get the user ID
+      let decoded =jwt.verify(token, process.env.AUTH_SECRET_KEY);
+      if(!decoded) {
+        socket.emit('authentication_error');
+        socket.disconnect();
+        return;
+      }
+      // If the token is valid, add the socket to the userSockets dictionary
+      const userId = decoded.id;
+      userSockets[userId] = socket;
+
+    }
   });
+  
 
   socket.on('disconnect', () => {
+    numUsers--;
     console.log('A user disconnected');
+    io.emit('user count', numUsers);
+
+    // Remove the socket from the userSockets dictionary
+    for (let userId in userSockets) {
+      if (userSockets[userId] === socket) {
+        delete userSockets[userId];
+        break;
+      }
+    }
   });
 });
 
@@ -126,6 +163,11 @@ process.on('SIGINT', gracefulShutdown);
 process.on('SIGTERM', gracefulShutdown);
 
 
+// app.use((req, res, next) => {
+//   console.log(`Received a ${req.method} request to ${req.url}`);
+//   next();
+// });
+
 app.use(bodyParser.json());
 // User routes
 const UsersRoute = require("./routes/users.js");
@@ -145,16 +187,7 @@ server.listen(port, () => {
   console.log(`Server is running on port ${port}`);
 });
 
-const jwt = require("jsonwebtoken");
 
-const verifyToken = (token) => {
-  try {
-    const decoded = jwt.verify(token, process.env.AUTH_SECRET_KEY);
-    return decoded.id;
-  } catch (error) {
-    return null;
-  }
-};
 
 const handleAction = async (socket, action, userId) => {
   console.log('Received action:', action);
@@ -286,17 +319,17 @@ const processBuildAction = async (action, userId) => {
   let buildingObject = { structureType, owner: username };
   if(structureType === "structureTower") {
     buildingObject.damage = 100;
-    buildingObject.hits = 3000;
-    buildingObject.hitsMax = 3000;
+    buildingObject.hits = 250;
+    buildingObject.hitsMax = 250;
   }
   else if(structureType === "structureSpawn") {
-    buildingObject.hits = 5000;
-    buildingObject.hitsMax = 5000;
+    buildingObject.hits = 500;
+    buildingObject.hitsMax = 500;
     buildingObject.spawning = false;
   }
 
   board[y][x].building = buildingObject;
-  await updateUserGold(userId, structureType, false);
+  await updateUserResources(userId, {gold:structureType});
 };
 
 const processTowerShootAction = async (action, userId) => {
@@ -363,14 +396,14 @@ const processSpawnWorkerAction = async (action, userId) => {
       y: targetY
     },
     owner: username,
-    hits: 500,
-    hitsMax: 500,
+    hits: 100,
+    hitsMax: 100,
     damage: 12,
     nonMoveActions:1,
     moved:false
   }
   spawn.spawning = true;
-  await updateUserGold(userId, "worker", false);
+  await updateUserResources(userId, {gold:"worker"});
 };
 
 const processSpawnAxemanAction = async (action, userId) => {
@@ -402,13 +435,13 @@ const processSpawnAxemanAction = async (action, userId) => {
       y: targetY
     },
     owner: username,
-    hits: 1000,
-    hitsMax: 1000,
+    hits: 200,
+    hitsMax: 200,
     damage: 50,
     nonMoveActions:1,
     moved:false
   }
-  await updateUserGold(userId, "axeman", false);
+  await updateUserResources(userId, {gold:"axeman"});
 
 };
 
@@ -443,7 +476,7 @@ const processWorkerMineAction = async (action, userId) => {
   const goldToAdd = 80;
 
   // Update the user's resources.gold property in the database
-  await updateUserGold(userId, goldToAdd, true);
+  await updateUserResources(userId, {gold:goldToAdd});
 
 
 };
