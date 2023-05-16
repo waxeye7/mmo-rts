@@ -7,7 +7,7 @@
     ></div>
 
     <div
-      v-if="actions && board && getCellStyle"
+      v-if="actions && board && getCellStyle && timer"
       class="actions-dashboard overflow-scroll-y"
       :class="expanded && timerGreaterThanOne ? 'big' : 'small'"
     >
@@ -181,10 +181,10 @@ h2 {
   margin-right: 10px;
   height: 4px;
   width: 20px;
-  background-color: white;
+  background-color: rgb(240, 240, 240);
 }
 .curved-minimiser:hover {
-  background-color: white;
+  background-color: rgb(240, 240, 240);
 }
 .curved-minimiser:hover > div {
   background-color: #1d1e22;
@@ -198,7 +198,7 @@ h2 {
   padding: 16px;
 
   background-color: #1d1e22;
-  color: white;
+  color: rgb(240, 240, 240);
   border-radius: 6px 0 0 0;
   width: 260px;
   transition: all 0.5s ease;
@@ -210,7 +210,7 @@ h2 {
 }
 
 .action-item {
-  border: 1px white solid;
+  border: 1px rgb(240, 240, 240) rgb(240, 240, 240) solid;
   padding: auto;
   display: flex;
   justify-content: space-between;
@@ -223,7 +223,7 @@ button {
 }
 .big {
   width: 260px;
-  height: calc(96.5vh - 70px);
+  height: 50vh;
 }
 .small {
   height: 20px;

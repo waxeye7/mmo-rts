@@ -152,7 +152,7 @@ export default {
         identifier: {
           backgroundColor: "#000000",
           shape: "circle",
-          fillColor: "#ffffff",
+          fillColor: "rgb(240, 240, 240)",
         },
       },
     };
@@ -279,7 +279,7 @@ export default {
 }
 #app {
   background-color: #1d1e22f1;
-  color: #fff;
+  color: rgb(240, 240, 240);
   font-family: Arial, sans-serif;
   margin: 0;
   padding: 0;
@@ -296,7 +296,7 @@ header {
   padding: 0 2rem;
   align-items: center;
   background-color: #1d1e22;
-  color: #ffffff;
+  color: rgb(240, 240, 240);
   height: 70px;
   box-shadow: 0 2px 4px 0 rgba(0, 0, 0, 0.2);
 }
@@ -327,8 +327,8 @@ h1 {
 
 .decider-button {
   background-color: #1d1e22;
-  border: 1px solid #fff;
-  color: #fff;
+  border: 1px solid rgb(240, 240, 240);
+  color: rgb(240, 240, 240);
   padding: 1.2em 3em;
   margin: 0.5em;
   cursor: pointer;
@@ -337,16 +337,16 @@ h1 {
 
 .decider-button:hover {
   background-color: #686868;
-  color: #fff;
+  color: rgb(240, 240, 240);
 }
 
 .form-container {
   background-color: #1d1e22;
-  color: #fff;
+  color: rgb(240, 240, 240);
   padding: 1em;
   margin-top: 1em;
   width: 300px;
-  border: 1px solid #fff;
+  border: 1px solid rgb(240, 240, 240);
   border-radius: 5px;
 }
 
@@ -362,7 +362,7 @@ input {
 
 button {
   cursor: pointer;
-  background-color: #fff;
+  background-color: rgb(240, 240, 240);
   color: #1d1e22;
   padding: 0.5em;
   margin-top: 1em;
@@ -370,7 +370,7 @@ button {
 
 button:hover {
   background-color: #686868;
-  color: #fff;
+  color: rgb(240, 240, 240);
 }
 
 button:disabled {

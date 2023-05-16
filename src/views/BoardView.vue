@@ -55,7 +55,7 @@ import { io } from "socket.io-client";
             style="margin-bottom: 2px"
             alt="Stone"
           />
-          <span>Stone: {{ user.resources.wood }}</span>
+          <span>Stone: {{ user.resources.stone }}</span>
         </div>
         <div v-if="user && user.resources" class="resource-item">
           <img
@@ -64,7 +64,7 @@ import { io } from "socket.io-client";
             style="margin-bottom: 2px"
             alt="Wood"
           />
-          <span>Food: {{ user.resources.wood }}</span>
+          <span>Food: {{ user.resources.food }}</span>
         </div>
       </div>
 
@@ -992,14 +992,14 @@ export default {
 .right-section {
   display: flex;
   align-items: center;
-  color: white;
+  color: rgb(240, 240, 240);
 }
 
 .header-item {
   margin-right: 1rem;
   font-size: 1.1rem;
   font-weight: 600;
-  color: #fff;
+  color: rgb(240, 240, 240);
 }
 
 .resource-item {
@@ -1052,7 +1052,7 @@ export default {
   top: 70px;
   width: 260px;
   background-color: #1d1e22;
-  color: #ffffff;
+  color: rgb(240, 240, 240);
   padding: 16px;
   z-index: 2;
   border-radius: 0 0 0 6px;
@@ -1122,7 +1122,7 @@ export default {
   line-height: 50px;
   text-align: center;
   background-color: #333;
-  color: #ffffff;
+  color: rgb(240, 240, 240);
   cursor: pointer;
   box-shadow: 0 2px 10px 0 rgba(0, 0, 0, 0.2);
   transition: all 0.3s ease-in-out;
@@ -1194,7 +1194,7 @@ export default {
 
 .modal-content .close:hover,
 .modal-content .close:focus {
-  color: #ffffff;
+  color: rgb(240, 240, 240);
   text-decoration: none;
   cursor: pointer;
 }
@@ -1214,7 +1214,7 @@ export default {
   overflow: hidden;
 }
 .user-identifier-absolute-cell-information {
-  border: 1px white solid;
+  border: 1px rgb(240, 240, 240) solid;
   position: absolute;
   top: 0;
   right: 0;
@@ -1227,6 +1227,6 @@ export default {
   margin: 0;
   padding: 0;
   outline: none;
-  border: 1px black solid;
+  border: 2px black solid;
 }
 </style>
