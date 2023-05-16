@@ -13,7 +13,8 @@ const updateUserResources = async (userId, resources = {}) => {
     }
     update[`resources.${resource}`] = cost;
   }
-
+  console.log(JSON.stringify(update))
+  console.log(userId)
   // Access the database and update the user's resources
   await User.findByIdAndUpdate(
     userId,

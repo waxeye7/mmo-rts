@@ -40,8 +40,8 @@ const cors = require('cors');
 const io = socketIO(server, {
   cors: {
     origin: 'http://localhost:8080',
-    methods: ['GET', 'POST', 'PUT'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
+    methods: ['GET', 'POST', 'PUT', 'DELETE'],
+    allowedHeaders: ['Content-Type'],
     credentials: true
   }
 });
@@ -61,8 +61,8 @@ io.use((socket, next) => {
 // Configure CORS for Express
 app.use(cors({
   origin: 'http://localhost:8080',
-  methods: ['GET', 'POST', 'PUT'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
+  methods: ['GET', 'POST', 'PUT', 'DELETE'],
+  allowedHeaders: ['Content-Type'],
   credentials: true
 }));
 
@@ -447,7 +447,6 @@ const processSpawnAxemanAction = async (action, userId) => {
 
 const processWorkerMineAction = async (action, userId) => {
   const { x, y, targetX, targetY, username } = action.payload;
-
   if (!(await isValidUser(username, userId))) {
     return;
   }
@@ -456,7 +455,6 @@ const processWorkerMineAction = async (action, userId) => {
     console.error(`Invalid worker position: ${x}, ${y}`);
     return;
   }
-
   const worker = board[y][x].unit;
   const target = board[targetY][targetX];
   if(!worker) return;
@@ -464,21 +462,28 @@ const processWorkerMineAction = async (action, userId) => {
   if(worker.unitType !== "worker") return;
 
   if(worker.owner !== username) return;
-  if(!target.resource) return;
 
   if(worker.nonMoveActions && worker.nonMoveActions <= 0) {
-
     console.log("worker out of non move actions")
     return;
   }
 
+  if(!target.resource) return;
+  let resourceType = target.resource.resourceType;
 
-  const goldToAdd = 80;
+  const validResourceTypes = ['wood', 'stone', 'food', 'gold'];
+  // Check if resourceType is valid
+  if (!validResourceTypes.includes(resourceType)) {
+    throw new Error(`Invalid resource type: ${resourceType}`);
+  }
+  const resourceToAdd = 100;
 
-  // Update the user's resources.gold property in the database
-  await updateUserResources(userId, {gold:goldToAdd});
+  // Create an update object where the key is the value of resourceType
+  const update = { [resourceType]: resourceToAdd };
+  console.log(JSON.stringify(update))
 
-
+  // Update the user's resources in the database
+  await updateUserResources(userId, update);
 };
 
 const processMoveWorkerAction = async (action, userId) => {

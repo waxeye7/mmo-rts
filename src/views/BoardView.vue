@@ -239,8 +239,8 @@ import { io } from "socket.io-client";
             <div v-for="(cell, x) in row" :key="x">
               <div class="cell-wrapper">
                 <button
-                  class="flex align-start"
-                  @click="
+                  class="actual-cell"
+                  @click.self="
                     if (
                       !selectedCell ||
                       selectedCell.x !== cell.x ||
@@ -318,6 +318,7 @@ import { io } from "socket.io-client";
         :actions="user.actions"
         :board="board"
         :getCellStyle="getCellStyle"
+        :timer="timer"
         @cancel-action="cancelAction"
       />
     </div>
@@ -387,6 +388,8 @@ import { io } from "socket.io-client";
 export default {
   data() {
     return {
+      justFinishedDragging: false,
+
       user: null,
       userIdentifierInfo: {},
       board: [],
@@ -399,6 +402,7 @@ export default {
       zoom: 0.4,
       originX: 0,
       originY: 0,
+      isDragging: false,
       dragging: false,
       dragStartX: 0,
       dragStartY: 0,
@@ -587,6 +591,7 @@ export default {
       this.handleAction(this.selectedActionType);
     },
     cancelTargetSelection() {
+      console.log("here");
       this.selectedCell = null;
       this.actionPopup = false;
       this.selectedActionType = null;
@@ -618,10 +623,6 @@ export default {
         baseStyle.filter = "brightness(1.05)";
       }
 
-      if (!baseStyle.border) {
-        baseStyle.border = "2px solid transparent !important";
-      }
-
       if (cell.building) {
         if (cell.building.structureType === "structureSpawn") {
           backgroundImageUrl = "/images/buildings/structureSpawn.png";
@@ -651,9 +652,8 @@ export default {
 
       if (backgroundImageUrl) {
         baseStyle.backgroundImage = `url("${backgroundImageUrl}")`;
-        baseStyle.backgroundSize = "cover";
         baseStyle.backgroundPosition = "center";
-        if (cell.resource) baseStyle.backgroundColor = "black";
+        // if (cell.resource) baseStyle.backgroundColor = "black";
       }
 
       // // Identifier style
@@ -726,6 +726,9 @@ export default {
       }
     },
     selectCell(cell) {
+      if (this.isDragging) {
+        return;
+      }
       this.selectedCell = cell;
     },
     handleWheel(event) {
@@ -768,9 +771,18 @@ export default {
       this.dragging = true;
       this.dragStartX = event.clientX;
       this.dragStartY = event.clientY;
+      // Attach mousemove event handler
+      this.$el.addEventListener("mousemove", this.mouseMoveHandler);
     },
     endDrag() {
       this.dragging = false;
+      this.$el.removeEventListener("mousemove", this.mouseMoveHandler);
+      setTimeout(() => {
+        this.isDragging = false;
+      }, 50);
+    },
+    mouseMoveHandler() {
+      this.isDragging = true;
     },
     moveCamera(event) {
       if (!this.dragging) return;
@@ -1078,7 +1090,6 @@ export default {
 }
 
 .scroll-container {
-  cursor: grab;
   position: relative;
   width: 100%;
   height: 100%;
@@ -1086,7 +1097,7 @@ export default {
   box-sizing: border-box;
 }
 .scroll-container:active {
-  cursor: grabbing;
+  cursor: move !important;
 }
 
 .board-container {
@@ -1193,6 +1204,9 @@ export default {
   max-width: 100px;
   max-height: 100px;
   margin: 0;
+  padding: 0;
+  border: none;
+  outline: none;
 }
 
 .father {
@@ -1204,5 +1218,15 @@ export default {
   position: absolute;
   top: 0;
   right: 0;
+}
+.actual-cell {
+  display: flex;
+  align-items: flex-start;
+  background-repeat: no-repeat;
+  background-size: cover;
+  margin: 0;
+  padding: 0;
+  outline: none;
+  border: 1px black solid;
 }
 </style>

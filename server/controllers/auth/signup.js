@@ -20,6 +20,7 @@ const signup = async (req, res) => {
       resources: {
         gold: 1650,
         wood: 0,
+        stone: 0,
         food: 0,
       },
       units: [],

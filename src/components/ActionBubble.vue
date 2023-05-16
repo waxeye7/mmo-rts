@@ -51,24 +51,49 @@ export default {
         if (this.cell.unit.unitType === "worker") {
           actions.push(
             { actionName: "move worker", icon: "people-carry-box" },
-            "worker mine"
+            { actionName: "worker mine", icon: "people-carry-box" }
           );
         } else if (this.cell.unit.unitType === "axeman") {
-          actions.push("move axeman", "axeman attack");
+          actions.push(
+            { actionName: "move axeman", icon: "people-carry-box" },
+            { actionName: "axeman attack", icon: "people-carry-box" }
+          );
         }
       } else if (this.cell.building) {
         if (this.cell.building.structureType === "structureSpawn") {
-          actions.push("spawn worker", "spawn axeman");
+          actions.push(
+            {
+              actionName: "spawn worker",
+              icon: "people-carry-box",
+              cost: { type: "gold", amount: 150 },
+            },
+            {
+              actionName: "spawn axeman",
+              icon: "people-carry-box",
+              cost: { type: "gold", amount: 250 },
+            }
+          );
         } else if (this.cell.building.structureType === "structureTower") {
-          actions.push("tower shoot");
+          actions.push({ actionName: "tower shoot", icon: "people-carry-box" });
         }
       } else {
-        actions.push("build spawn", "build tower");
+        actions.push(
+          {
+            actionName: "build spawn",
+            icon: "people-carry-box",
+            cost: { type: "gold", amount: 1500 },
+          },
+          {
+            actionName: "build tower",
+            icon: "people-carry-box",
+            cost: { type: "gold", amount: 750 },
+          }
+        );
       }
 
       // Add the "Cancel Action" as a separate action only if there are other actions
       if (actions.length > 0) {
-        actions.push("Cancel Action");
+        actions.push({ actionName: "Cancel Action", icon: "people-carry-box" });
       }
       return actions;
     },
@@ -96,7 +121,7 @@ export default {
   position: absolute;
   width: 100%;
   height: 100%;
-  top: 0;
+  top: -50px;
   left: 0;
   pointer-events: none;
 }
@@ -121,6 +146,9 @@ export default {
   padding: 5px; /* Padding for better layout */
   box-shadow: 2px 2px 10px rgba(0, 0, 0, 0.1); /* Shadow for 3D effect */
   text-align: center; /* Center the text */
+}
+.action-button span {
+  font-size: 18px;
 }
 
 .action-button:hover {

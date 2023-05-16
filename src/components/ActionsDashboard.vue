@@ -9,7 +9,7 @@
     <div
       v-if="actions && board && getCellStyle"
       class="actions-dashboard overflow-scroll-y"
-      :class="expanded ? 'big' : 'small'"
+      :class="expanded && timerGreaterThanOne ? 'big' : 'small'"
     >
       <div class="relative">
         <div v-if="expanded" @click="toggleVisibility" class="curved-minimiser">
@@ -56,16 +56,17 @@
                   :style="
                     getCellStyle(board[action.payload.y][action.payload.x])
                   "
+                  style="border: none; background-size: cover"
                 ></div>
                 <div
                   v-if="action.payload.targetX && action.payload.targetY"
                   class="cell-wrapper"
-                  style="margin-left: 1px"
                   :style="
                     getCellStyle(
                       board[action.payload.targetY][action.payload.targetX]
                     )
                   "
+                  style="margin-left: 1px border: none; background-size: cover;"
                 ></div>
               </div>
 
@@ -110,18 +111,30 @@ export default {
       type: Function,
       required: true,
     },
+    timer: {
+      type: Number,
+      required: true,
+    },
   },
   data() {
     return {
-      expanded: true,
+      expanded: this.timer > 1,
+      timerGreaterThanOne: this.timer > 1,
     };
+  },
+  watch: {
+    timer(newVal) {
+      this.timerGreaterThanOne = newVal > 1;
+    },
   },
   methods: {
     cancelAction(id) {
       this.$emit("cancel-action", id);
     },
     toggleVisibility() {
-      this.expanded = !this.expanded;
+      if (this.timerGreaterThanOne) {
+        this.expanded = !this.expanded;
+      }
     },
   },
 };
@@ -183,6 +196,7 @@ h2 {
   bottom: 0;
   right: 0;
   padding: 16px;
+
   background-color: #1d1e22;
   color: white;
   border-radius: 6px 0 0 0;
@@ -196,9 +210,12 @@ h2 {
 }
 
 .action-item {
+  border: 1px white solid;
+  padding: auto;
   display: flex;
   justify-content: space-between;
   align-items: center;
+  margin-bottom: 12px;
 }
 
 button {
@@ -206,7 +223,7 @@ button {
 }
 .big {
   width: 260px;
-  height: calc(97vh - 70px);
+  height: calc(96.5vh - 70px);
 }
 .small {
   height: 20px;
@@ -217,10 +234,13 @@ button {
   display: none;
 }
 .action-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
   cursor: pointer;
-  padding: 4px 20px;
+  padding: 6px 0;
   position: relative; /* Needed for absolute positioning of cancel-action */
-  margin: 0 auto;
   transition: background-color 0.3s ease; /* This will animate the background color */
 }
 
