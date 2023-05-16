@@ -6,12 +6,18 @@
         :key="index"
         :style="getButtonPosition(index)"
         @click="
-          action === 'Cancel Action'
+          action.actionName === 'Cancel Action'
             ? $emit('cancel_target_selection')
-            : $emit('action', action)
+            : $emit('action', action.actionName)
         "
+        class="action-button"
       >
-        {{ action }}
+        <font-awesome-icon :icon="action.icon" />
+        <span>{{ action.actionName }}</span>
+        <div v-if="action.cost" class="cost-label">
+          <i :class="`fa fa-${action.cost.type}`"></i>
+          {{ action.cost.amount }}
+        </div>
       </button>
     </div>
   </div>
@@ -43,7 +49,10 @@ export default {
 
       if (this.cell.unit) {
         if (this.cell.unit.unitType === "worker") {
-          actions.push("move worker", "worker mine");
+          actions.push(
+            { actionName: "move worker", icon: "people-carry-box" },
+            "worker mine"
+          );
         } else if (this.cell.unit.unitType === "axeman") {
           actions.push("move axeman", "axeman attack");
         }
@@ -83,12 +92,6 @@ export default {
 </script>
 
 <style scoped>
-.cell-wrapper {
-  position: relative;
-}
-.actions-list {
-  position: relative;
-}
 .action-bubble {
   position: absolute;
   width: 100%;
@@ -98,18 +101,53 @@ export default {
   pointer-events: none;
 }
 
-.action-bubble button {
+.action-button {
   z-index: 100000;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: #f8f8f8;
+  border: 1px solid #cccccc;
+  border-radius: 10px;
+  width: 120px; /* Wider width */
+  height: 80px;
+  position: absolute;
+  transform: translate(-50%, -50%);
+  pointer-events: auto;
+  transition: all 0.2s ease-in-out;
+  font-size: 14px; /* Smaller font size */
+  color: #333;
+  padding: 5px; /* Padding for better layout */
+  box-shadow: 2px 2px 10px rgba(0, 0, 0, 0.1); /* Shadow for 3D effect */
+  text-align: center; /* Center the text */
+}
+
+.action-button:hover {
+  background: #ebebeb;
+  transform: translate(-50%, -50%) scale(1.05);
+}
+
+.action-button i {
+  margin-bottom: 5px;
+}
+
+.action-button span {
+  margin-bottom: 5px;
+}
+
+.cost-label {
   display: flex;
   align-items: center;
   justify-content: center;
-  border: 1px solid black;
-  border-radius: 50%;
-  width: 60px;
-  height: 60px;
-  position: absolute;
-  /* Center the button to the container */
-  transform: translate(-50%, -50%);
-  pointer-events: auto;
+  background: #dddddd;
+  color: #333;
+  font-size: 12px;
+  padding: 2px 5px;
+  border-radius: 5px;
+}
+
+.cost-label i {
+  margin-right: 5px;
 }
 </style>

@@ -48,7 +48,7 @@
                   v-if="
                     board &&
                     action &&
-                    action.payload &&
+                    action?.payload &&
                     action?.payload?.x &&
                     action?.payload?.y
                   "
@@ -70,7 +70,7 @@
               </div>
 
               <div class="flex justify-content-center">
-                <p v-if="action.payload.targetX">
+                <p v-if="action.payload.x && action.payload.y">
                   x:{{ action.payload.x }}, y:{{ action.payload.y }}
                 </p>
                 <img

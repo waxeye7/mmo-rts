@@ -1,6 +1,7 @@
 const Board = require("../../models/board");
 
 const createBoard = async () => {
+  console.log("creating new board")
   const size = 20;
   const gridSize = 6;
   const newBoard = new Array(size);
@@ -115,6 +116,9 @@ for (let gridY = 0; gridY < size; gridY += gridSize) {
   // Save the new board to the database using Mongoose
   const boardEntry = new Board({ state: newBoard });
   await boardEntry.save();
+  
+  console.log("board created")
+
   return boardEntry.state;
 };
 

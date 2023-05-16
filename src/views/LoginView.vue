@@ -5,7 +5,7 @@ import { io } from "socket.io-client";
 <template>
   <div id="app">
     <header>
-      <h1>MMO RTS</h1>
+      <h1 class="title">MMO RTS</h1>
       <p class="connected-users">Connected Users: {{ connectedUsers }}</p>
       <p class="version-number">Version: {{ version }}</p>
     </header>
@@ -309,12 +309,12 @@ h1 {
 }
 
 .version-number {
-  font-size: 1.2em;
+  font-size: clamp(14px, 3.5vw, 20px);
   text-align: end;
 }
 
 .connected-users {
-  font-size: 1em;
+  font-size: clamp(12px, 3vw, 16px);
   text-align: center;
 }
 
@@ -376,5 +376,8 @@ button:hover {
 button:disabled {
   background-color: #999;
   color: #ccc;
+}
+.title {
+  font-size: clamp(20px, 5vw, 30px);
 }
 </style>

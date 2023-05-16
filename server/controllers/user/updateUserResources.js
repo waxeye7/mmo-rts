@@ -5,11 +5,11 @@ const updateUserResources = async (userId, resources = {}) => {
   // Get the structure cost
   const update = {};
   for (let resource in resources) {
-    let cost;
+    let cost = 0;
     if (typeof(resources[resource]) === "number") {
-      cost = resources[resource];
+      cost += resources[resource];
     } else {
-      cost = getCost(resources[resource]);
+      cost -= getCost(resources[resource]);
     }
     update[`resources.${resource}`] = cost;
   }

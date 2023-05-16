@@ -331,55 +331,52 @@ import { io } from "socket.io-client";
         <span @click="hideModal" class="close">&times;</span>
         <h2>Welcome to Our MMO RTS Game!</h2>
         <p>
-          This game is a multiplayer online real-time strategy game where
-          players build and control their own armies to conquer territories and
-          defeat their opponents. In this guide, we will introduce you to the
-          game's basic mechanics and key concepts to help you get started.
+          This game is a thrilling multiplayer online real-time strategy game
+          where players build structures, train units, gather resources, and
+          engage in strategic battles in a shared game world. This guide
+          introduces you to the game's core mechanics and key concepts to help
+          you get started.
         </p>
-        <h3>Turn Lifecycle</h3>
-        <p>Each turn in the game consists of the following phases:</p>
-        <ol>
-          <li>
-            <strong>Action Phase:</strong> During this phase, you can perform
-            various actions, such as moving units, building structures, and
-            attacking enemies. Remember, you have a limited number of actions
-            per turn, so use them wisely!
-          </li>
-          <li>
-            <strong>Resolution Phase:</strong> In this phase, all actions taken
-            during the Action Phase are resolved. This includes movement,
-            battles, and building construction. Some actions might be canceled
-            due to other events happening during the Resolution Phase.
-          </li>
-        </ol>
-        <h3>Movement and Action Cancellation</h3>
+        <h3>Game Mechanics</h3>
+        <h4>Structures and Units</h4>
         <p>
-          When you move a unit, keep in mind that its movement might be canceled
-          in the following scenarios:
+          Players can construct strategic structures such as Spawns and Towers,
+          and train versatile units including Workers and Axemen. Spawns are
+          used to train new units while Towers provide a defensive edge.
         </p>
-        <ul>
-          <li>If a new unit spawns at the destination cell.</li>
-          <li>If a building is constructed at the destination cell.</li>
-          <li>
-            If another unit moves to the same destination cell. In this case,
-            one of the units will be randomly chosen to occupy the cell, while
-            the other unit's movement will be canceled.
-          </li>
-        </ul>
+        <h4>Resources and Biomes</h4>
         <p>
-          It's important to strategize and consider these possibilities when
-          planning your moves and actions.
+          Efficient resource management is key to success. Players must gather
+          and manage four types of resources - gold, wood, stone, and food.
+          Exploring and exploiting various biomes like plains, tundra, and
+          mountains can yield these resources.
         </p>
-        <h3>Actions Per Turn</h3>
+        <h4>Actions and Combat</h4>
         <p>
-          Each player has a limited number of actions they can perform during
-          their turn. Be sure to use your actions wisely and strategically to
-          gain an advantage over your opponents. Efficiently managing your
-          actions is crucial for success in the game.
+          Every turn, players have a limited number of actions such as building
+          structures, training and moving units, attacking enemies, and
+          gathering resources. Engage in thrilling combat with your trained
+          Axemen or use your Towers for defensive strategies.
+        </p>
+        <h3>Game Loop</h3>
+        <p>
+          The server runs a game loop that processes player actions and updates
+          the game world at customizable intervals. It processes all queued
+          actions, updates the game state and saves it to the database,
+          broadcasts the updated game state to all connected clients, resets the
+          actions queue, and updates the next task timestamp.
+        </p>
+        <h3>Strategic Considerations</h3>
+        <p>
+          It's important to strategize your moves keeping in mind the game
+          mechanics. The movement or action of a unit may be canceled due to the
+          spawning of a new unit, construction of a building, or another unit
+          moving to the same destination. Make sure to plan your moves and use
+          your limited actions per turn wisely.
         </p>
         <p>
-          We hope this information helps you get started with our game. Good
-          luck and have fun!
+          We hope this guide helps you get started with our game. Dive in,
+          strategize, and conquer. Good luck and have fun!
         </p>
       </div>
     </div>
@@ -618,6 +615,7 @@ export default {
 
       if (cell === this.selectedCell) {
         baseStyle.border = "2px solid blue !important";
+        baseStyle.filter = "brightness(1.05)";
       }
 
       if (!baseStyle.border) {
@@ -1103,37 +1101,27 @@ export default {
 /* Help button */
 .help-button {
   position: fixed;
-  bottom: 20px;
-  left: 20px;
+  bottom: 14px;
+  left: 14px;
   font-size: 24px;
-  border-radius: 50%;
-  width: 50px;
-  height: 50px;
-  text-align: center;
-  line-height: 50px;
-  background-color: #333;
-  color: white;
-  cursor: pointer;
-  z-index: 999;
-}
-
-.help-button {
-  text-align: center;
-  position: fixed;
-  bottom: 20px;
-  right: 30px;
-  font-size: 24px;
-  background-color: #000000;
   border: none;
   border-radius: 50%;
   width: 50px;
   height: 50px;
+  line-height: 50px;
+  text-align: center;
+  background-color: #333;
+  color: #ffffff;
   cursor: pointer;
-  transition: all 0.1s ease-in-out;
+  box-shadow: 0 2px 10px 0 rgba(0, 0, 0, 0.2);
+  transition: all 0.3s ease-in-out;
+  z-index: 999;
 }
+
 .help-button:hover {
-  background-color: #333333;
-  scale: 1.1;
+  background-color: #666666;
+  transform: scale(1.1);
+  box-shadow: 0 2px 20px 0 rgba(0, 0, 0, 0.3);
 }
 
 .modal {
@@ -1148,24 +1136,54 @@ export default {
 }
 
 .modal-content {
-  background-color: #fefefe;
-  margin: 15% auto;
-  padding: 20px;
-  border: 1px solid #888;
+  background-color: #1a1a1a;
+  border: 1px solid #333333;
+  border-radius: 8px;
+  box-shadow: 0px 2px 10px rgba(0, 0, 0, 0.2);
   width: 80%;
+  max-width: 600px;
+  margin: 5% auto;
+  padding: 30px;
+  position: relative;
+  animation-name: animatetop;
+  animation-duration: 0.4s;
+  font-family: "Helvetica Neue", Arial, sans-serif;
 }
 
-.close {
+@keyframes animatetop {
+  from {
+    top: -300px;
+    opacity: 0;
+  }
+  to {
+    top: 0;
+    opacity: 1;
+  }
+}
+
+.modal-content h2,
+.modal-content h3,
+.modal-content h4 {
+  color: #eeeeee;
+  margin-bottom: 10px;
+}
+
+.modal-content p {
+  color: #bbbbbb;
+  line-height: 1.6;
+  margin-bottom: 20px;
+}
+
+.modal-content .close {
   color: #aaaaaa;
   float: right;
   font-size: 28px;
   font-weight: bold;
-  cursor: pointer;
 }
 
-.close:hover,
-.close:focus {
-  color: #000;
+.modal-content .close:hover,
+.modal-content .close:focus {
+  color: #ffffff;
   text-decoration: none;
   cursor: pointer;
 }
@@ -1176,6 +1194,7 @@ export default {
   max-height: 100px;
   margin: 0;
 }
+
 .father {
   background-color: #1d1e22f1;
   overflow: hidden;
