@@ -1,6 +1,6 @@
 <template>
   <div class="action-bubble">
-    <div class="actions-list">
+    <div v-if="!chosen" class="actions-list">
       <button
         v-for="(action, index) in availableActions"
         :key="index"
@@ -15,6 +15,26 @@
         <font-awesome-icon :icon="action.icon" />
         <span>{{ action.actionName }}</span>
         <div v-if="action.cost" class="cost-label">
+          <img
+            v-if="action.cost.type === 'gold'"
+            class="small-icon"
+            src="/images/icons/gold.png"
+          />
+          <img
+            v-if="action.cost.type === 'wood'"
+            class="small-icon"
+            src="/images/icons/wood.png"
+          />
+          <img
+            v-if="action.cost.type === 'stone'"
+            class="small-icon"
+            src="/images/icons/stone.png"
+          />
+          <img
+            v-if="action.cost.type === 'food'"
+            class="small-icon"
+            src="/images/icons/food.png"
+          />
           <i :class="`fa fa-${action.cost.type}`"></i>
           {{ action.cost.amount }}
         </div>
@@ -31,6 +51,14 @@ export default {
     },
     user: {
       type: Object,
+      required: true,
+    },
+    chosen: {
+      type: Boolean,
+      required: true,
+    },
+    zoom: {
+      type: Number,
       required: true,
     },
   },
@@ -101,15 +129,17 @@ export default {
   methods: {
     getButtonPosition(index) {
       const angle = (2 * Math.PI * index) / this.availableActions.length;
-      const radius = 94; // Adjust the radius to position the buttons
+      const baseRadius = 94;
+      const zoomAdjustmentFactor = 0.8; // adjust this value to change the spread
+      const radius = baseRadius / (this.zoom * zoomAdjustmentFactor);
       const x = radius * Math.cos(angle) + 15;
       const y = radius * Math.sin(angle) + 64;
 
       return {
         position: "absolute",
-        left: `calc(50% - 15px + ${x}px)`, // Subtract half of the button width (15px) from the left position
-        top: `calc(50% - 15px + ${y}px)`, // Subtract half of the button height (15px) from the top position
-        transform: "translate(-50%, -50%)", // Center the button relative to the calculated position
+        left: `calc(50% - 15px + ${x}px)`,
+        top: `calc(50% - 15px + ${y}px)`,
+        transform: `translate(-50%, -50%) scale(${1 / this.zoom})`,
       };
     },
   },
@@ -124,6 +154,7 @@ export default {
   top: -50px;
   left: 0;
   pointer-events: none;
+  z-index: 100000000;
 }
 
 .action-button {
@@ -132,27 +163,28 @@ export default {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  background: #f8f8f8;
+  background: #000000; /* Black background */
   border: 1px solid #cccccc;
   border-radius: 10px;
-  width: 120px; /* Wider width */
+  width: 120px;
   height: 80px;
   position: absolute;
   transform: translate(-50%, -50%);
   pointer-events: auto;
   transition: all 0.2s ease-in-out;
-  font-size: 14px; /* Smaller font size */
-  color: #333;
-  padding: 5px; /* Padding for better layout */
-  box-shadow: 2px 2px 10px rgba(0, 0, 0, 0.1); /* Shadow for 3D effect */
-  text-align: center; /* Center the text */
-}
-.action-button span {
-  font-size: 18px;
+  font-size: 14px;
+  color: #ffffff; /* White text */
+  padding: 5px;
+  box-shadow: 2px 2px 10px rgba(0, 0, 0, 0.1);
+  text-align: center;
 }
 
+.action-button span {
+  font-size: 18px;
+  color: #ffffff; /* White text */
+}
 .action-button:hover {
-  background: #ebebeb;
+  background: #333333; /* Darker black on hover */
   transform: translate(-50%, -50%) scale(1.05);
 }
 
@@ -163,19 +195,22 @@ export default {
 .action-button span {
   margin-bottom: 5px;
 }
-
 .cost-label {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #dddddd;
-  color: #333;
+  background: #333333; /* Darker black for cost label background */
+  color: #ffffff; /* White text for cost label */
   font-size: 12px;
   padding: 2px 5px;
-  border-radius: 5px;
+  border-radius: 5 px;
 }
 
 .cost-label i {
   margin-right: 5px;
+}
+.small-icon {
+  height: 20px;
+  width: 20px;
 }
 </style>

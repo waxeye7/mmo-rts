@@ -1,5 +1,8 @@
+let buildActionsQueue = [];
+let spawningActionsQueue = [];
+let resourceGatheringActionsQueue = [];
+let conflictActionsQueue = [];
 let moveActionsQueue = [];
-let nonMoveActionsQueue = [];
 
 const removeActionFromQueue = (id) => {
   const queueIndex = moveActionsQueue.findIndex(request => request.action.id === id);
@@ -16,7 +19,10 @@ const removeActionFromQueue = (id) => {
 };
 
 module.exports = {
+  buildActionsQueue,
+  spawningActionsQueue,
+  resourceGatheringActionsQueue,
+  conflictActionsQueue,
   moveActionsQueue,
-  nonMoveActionsQueue,
   removeActionFromQueue
 };

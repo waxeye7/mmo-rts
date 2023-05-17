@@ -3,7 +3,11 @@ import UserIdentifier from "../components/UserIdentifier.vue";
 import { io } from "socket.io-client";
 </script>
 <template>
-  <div id="app">
+  <div
+    id="app"
+    :style="{ backgroundImage: 'url(' + bgImage + ')' }"
+    class="blur"
+  >
     <header>
       <h1 class="title">MMO RTS</h1>
       <p class="connected-users">Connected Users: {{ connectedUsers }}</p>
@@ -138,6 +142,7 @@ import { io } from "socket.io-client";
 export default {
   data() {
     return {
+      bgImage: "",
       connectedUsers: 0, // This would be updated via socket
       version: "1.0.0", // This would be updated as needed
       selectedForm: null,
@@ -158,6 +163,36 @@ export default {
     };
   },
   methods: {
+    selectRandomImage() {
+      const images = [
+        "/images/misc/background/background.png",
+        "/images/misc/background/background2.png",
+        "/images/misc/background/background3.png",
+        "/images/misc/background/background4.png",
+        "/images/misc/background/background5.png",
+        "/images/misc/background/background6.png",
+        "/images/misc/background/background7.png",
+        "/images/misc/background/background8.png",
+        "/images/misc/background/background9.png",
+        "/images/misc/background/background10.png",
+        "/images/misc/background/background11.png",
+        "/images/misc/background/background12.png",
+        "/images/misc/background/background13.png",
+        "/images/misc/background/background14.png",
+        "/images/misc/background/background15.png",
+        "/images/misc/background/background16.png",
+        "/images/misc/background/background17.png",
+        "/images/misc/background/background18.png",
+        "/images/misc/background/background19.png",
+        "/images/misc/background/background20.png",
+      ];
+      const randomIndex = Math.floor(Math.random() * images.length);
+      const selectedImage = images[randomIndex];
+      document.documentElement.style.setProperty(
+        "--bg-image",
+        `url(${selectedImage})`
+      );
+    },
     connectToSocket() {
       // Disconnect the current socket if it exists
       if (this.$socket) {
@@ -246,10 +281,16 @@ export default {
   beforeUnmount() {
     this.$socket.off("user count");
   },
+  mounted() {
+    setTimeout(() => {
+      document.getElementById("app").classList.remove("blur");
+    }, 100); // Wait a bit for the page to load before starting the transition
+  },
   created() {
     this.$socket.on("user count", (numUsers) => {
       this.connectedUsers = numUsers;
     });
+    this.selectRandomImage();
   },
 };
 </script>
@@ -277,19 +318,51 @@ export default {
 #shape {
   font-size: 1.2em;
 }
+/* background-image: url("../../public/images/misc/background/background3.png"); */
+
+#app::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-image: var(--bg-image);
+  background-repeat: no-repeat;
+  background-position: 0% 50%; /* start position of the image */
+  background-size: cover;
+  -webkit-background-size: cover;
+  -moz-background-size: cover;
+  -o-background-size: cover;
+  filter: blur(50px);
+  animation: blurFade 6s forwards, backgroundPan 60s infinite linear;
+  z-index: -1;
+}
+
+@keyframes blurFade {
+  to {
+    filter: blur(0px);
+  }
+}
+
+@keyframes backgroundPan {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
 #app {
-  background-color: #1d1e22f1;
+  background-color: #1d1e22e8;
   color: rgb(240, 240, 240);
   font-family: Arial, sans-serif;
   margin: 0;
   padding: 0;
-  /* background: url("path_to_your_image.jpg") no-repeat center center fixed; */
-  -webkit-background-size: cover;
-  -moz-background-size: cover;
-  -o-background-size: cover;
-  background-size: cover;
 }
-
 header {
   pointer-events: none;
   display: flex;
@@ -298,7 +371,7 @@ header {
   background-color: #1d1e22;
   color: rgb(240, 240, 240);
   height: 70px;
-  box-shadow: 0 2px 4px 0 rgba(0, 0, 0, 0.2);
+  box-shadow: 0 2px 4px 0 rgba(0, 0, 0, 0.1);
 }
 header * {
   flex: 1;
@@ -309,7 +382,8 @@ h1 {
 }
 
 .version-number {
-  font-size: clamp(14px, 3.5vw, 20px);
+  font-size: clamp(12px, 3vw, 16px);
+
   text-align: end;
 }
 
@@ -326,6 +400,7 @@ h1 {
 }
 
 .decider-button {
+  font-size: clamp(16px, 2.4vw, 24px);
   background-color: #1d1e22;
   border: 1px solid rgb(240, 240, 240);
   color: rgb(240, 240, 240);

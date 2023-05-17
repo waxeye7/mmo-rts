@@ -283,4 +283,7 @@ button {
 p {
   margin: 8px 0;
 }
+.action-type {
+  margin: 4px 0 6px 0;
+}
 </style>

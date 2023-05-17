@@ -12,7 +12,7 @@ const User = require('./models/user');
 const canUserAfford = require('./controllers/user/canUserAfford');
 const updateUserResources = require('./controllers/user/updateUserResources');
 const getCost = require('../CONSTANTS/getCost');
-const { moveActionsQueue, nonMoveActionsQueue } = require('./actionsQueue');
+const { buildActionsQueue, spawningActionsQueue, resourceGatheringActionsQueue, conflictActionsQueue, moveActionsQueue } = require('./actionsQueue');
 const jwt = require('jsonwebtoken');
 const cookie = require('cookie');
 
@@ -223,43 +223,71 @@ const handleAction = async (socket, action, userId) => {
   let updatedUser = await addAction(action, userId);
   if(updatedUser) {
     socket.emit('updateUser', updatedUser);
-    if (action.type === 'move worker' || action.type === 'move axeman') {
+
+    if(action.type === 'build spawn' || action.type === 'build tower') {
+      buildActionsQueue.push({action, userId});
+    }
+    else if(action.type === 'spawn worker' || action.type === 'spawn axeman') {
+      spawningActionsQueue.push({action, userId});
+    }
+    else if(action.type === 'worker mine') {
+      resourceGatheringActionsQueue.push({action, userId});
+    }
+    else if(action.type === 'tower shoot' || action.type === 'axeman attack' || action.type === 'worker attack') {
+      conflictActionsQueue.push({action, userId});
+    } 
+    else if (action.type === 'move worker' || action.type === 'move axeman') {
       moveActionsQueue.push({action, userId});
-    } else {
-      nonMoveActionsQueue.push({action, userId});
+    }
+    else {
+      console.log("invalid action type from user", userId, "attempted action:", action);
     }
   }
   else {
-    console.log("updated user not found. error here.")
+    console.log("updated user not found. error here.");
   }
 
 };
 
 const processActions = async () => {
-  for (const request of nonMoveActionsQueue) {
+  for (const request of buildActionsQueue) {
     if (request.action.type === 'build spawn' || request.action.type === 'build tower') {
       await processBuildAction(request.action, request.userId);
-    } else if (request.action.type === "tower shoot") {
-      await processTowerShootAction(request.action, request.userId);
-    } else if (request.action.type === "spawn worker") {
-      await processSpawnWorkerAction(request.action, request.userId);
-    }
-    else if(request.action.type === "spawn axeman"){
-      await processSpawnAxemanAction(request.action, request.userId);
-    }
-    else if(request.action.type === "worker mine") {
-      await processWorkerMineAction(request.action, request.userId);
-    }
-    else if(request.action.type === "axeman attack") {
-      await processAxemanAttackAction(request.action, request.userId);
     }
   }
-  nonMoveActionsQueue.length = 0;
+  buildActionsQueue.length = 0;
 
+  for (const request of spawningActionsQueue) {
+    if (request.action.type === 'spawn worker') {
+      await processSpawnWorkerAction(request.action, request.userId);
+    }
+    else if(request.action.type === 'spawn axeman'){
+      await processSpawnAxemanAction(request.action, request.userId);
+    }
+  }
+  spawningActionsQueue.length = 0;
 
-  // need to update units/buildings with hits < 0 before move actions
-  // loop through board and check hits is less than or equal to 0
-  // if so, remove unit/building from board
+  for (const request of resourceGatheringActionsQueue) {
+    if (request.action.type === 'worker mine') {
+      await processWorkerMineAction(request.action, request.userId);
+    }
+  }
+  resourceGatheringActionsQueue.length = 0;
+
+  for (const request of conflictActionsQueue) {
+    if (request.action.type === "axeman attack") {
+      await processAxemanAttackAction(request.action, request.userId);
+    }
+    else if(request.action.type === "worker attack") {
+      await processWorkerAttackAction(request.action, request.userId);
+    }
+    else if(request.action.type === "tower shoot") {
+      await processTowerShootAction(request.action, request.userId);
+    }
+  }
+  conflictActionsQueue.length = 0;
+
+  // need to clean up dead units or destroyed structures (below or equal to 0 hits) before move actions
   for(let y = 0; y < board.length; y++) {
     for(let x = 0; x < board[y].length; x++) {
       let cell = board[y][x];
@@ -272,15 +300,9 @@ const processActions = async () => {
         if(cell.building.hits <= 0) {
           cell.building = null;
         }
-        else if(cell.building.structureType === "structureSpawn") {
-          if(cell.building.spawning) {
-            cell.building.spawning = false;
-          }
-        }
       }
     }
   }
-  
 
   for (const request of moveActionsQueue) {
     if (request.action.type === "move worker") {
@@ -292,7 +314,7 @@ const processActions = async () => {
   }
   moveActionsQueue.length = 0;
 
-
+  // reset actions Taken of units and buildings so that every unit and building can take another action next turn
   for(let y = 0; y < board.length; y++) {
     for(let x = 0; x < board[y].length; x++) {
       let cell = board[y][x];
@@ -300,7 +322,6 @@ const processActions = async () => {
       else if(cell.building && cell.building.actionTaken) cell.building.actionTaken = false;
     }
   }
-
 
   // Save the updated board state to the database
   await saveBoardState(board);

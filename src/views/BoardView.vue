@@ -2,6 +2,7 @@
 import UserIdentifier from "../components/UserIdentifier.vue";
 import ActionBubble from "../components/ActionBubble.vue";
 import ActionsDashboard from "../components/ActionsDashboard.vue";
+import CurrentAction from "../components/CurrentAction.vue";
 import { v4 as uuidv4 } from "uuid";
 import { io } from "socket.io-client";
 </script>
@@ -20,7 +21,7 @@ import { io } from "socket.io-client";
           :zoom="null"
         />
 
-        <h1 v-if="timer" class="header-item">
+        <div v-if="timer" class="header-item">
           Time until actions are refilled:
           {{
             timer > 86400
@@ -31,10 +32,10 @@ import { io } from "socket.io-client";
               ? Math.floor(timer / 60) + " minutes"
               : timer + " seconds"
           }}
-        </h1>
-        <h1 v-if="user" class="header-item">
+        </div>
+        <div v-if="user" class="header-item">
           Your actions: {{ 10 - user.actions.length }}
-        </h1>
+        </div>
         <div v-if="user && user.resources" class="resource-item">
           <img class="resource-icon" src="images/icons/gold.png" alt="Gold" />
           <span>Gold: {{ user.resources.gold }}</span>
@@ -68,9 +69,25 @@ import { io } from "socket.io-client";
         </div>
       </div>
 
+      <div class="alerts">
+        <transition-group name="fade" tag="div">
+          <div class="alert" v-for="alert in alerts" :key="alert.id">
+            {{ alert.message }}
+          </div>
+        </transition-group>
+      </div>
+
+      <CurrentAction
+        v-if="selectedActionType"
+        :actionType="selectedActionType"
+        @cancel_target_selection="cancelTargetSelection"
+      />
+
       <div v-if="user" class="right-section">
-        <h1 class="header-item">Logged in as: {{ user.username }}</h1>
-        <h1 @click="logout" class="logout">Log Out</h1>
+        <h1 class="header-item logout-size">
+          Logged in as: {{ user.username }}
+        </h1>
+        <h1 @click="logout" class="logout logout-size">Log Out</h1>
       </div>
     </div>
 
@@ -240,7 +257,7 @@ import { io } from "socket.io-client";
               <div class="cell-wrapper">
                 <button
                   class="actual-cell"
-                  @click.self="
+                  @click="
                     if (
                       !selectedCell ||
                       selectedCell.x !== cell.x ||
@@ -249,7 +266,7 @@ import { io } from "socket.io-client";
                       actionPopup ? selectTargetCell(cell) : selectCell(cell);
                     } else if (!actionPopup) {
                       selectedCell = null;
-                    } else if (actionPopup) sendAlert('cannot target itself');
+                    } else if (actionPopup) addAlert('cannot target itself');
                   "
                   :style="getCellStyle(cell)"
                 >
@@ -304,6 +321,8 @@ import { io } from "socket.io-client";
                   "
                   :cell="cell"
                   :user="user"
+                  :chosen="chosen"
+                  :zoom="zoom"
                   @action="handleAction"
                   @cancel_target_selection="cancelTargetSelection"
                 />
@@ -335,8 +354,8 @@ import { io } from "socket.io-client";
           This game is a thrilling multiplayer online real-time strategy game
           where players build structures, train units, gather resources, and
           engage in strategic battles in a shared game world. This guide
-          introduces you to the game's core mechanics and key concepts to help
-          you get started.
+          introduces you to the game's core mechanics, key concepts, and
+          strategic considerations to help you get started.
         </p>
         <h3>Game Mechanics</h3>
         <h4>Structures and Units</h4>
@@ -369,15 +388,28 @@ import { io } from "socket.io-client";
         </p>
         <h3>Strategic Considerations</h3>
         <p>
-          It's important to strategize your moves keeping in mind the game
-          mechanics. The movement or action of a unit may be canceled due to the
-          spawning of a new unit, construction of a building, or another unit
-          moving to the same destination. Make sure to plan your moves and use
-          your limited actions per turn wisely.
+          It's important to strategize your moves considering the game mechanics
+          and the order of actions. The game processes action types in the
+          following order: construction, spawning, resource gathering,
+          conflicts, and then movement. This means that even if your worker is
+          killed on the same turn it gathers resources, the resource will still
+          be stockpiled before the worker is removed.
         </p>
         <p>
-          We hope this guide helps you get started with our game. Dive in,
-          strategize, and conquer. Good luck and have fun!
+          Please note that within each action type, the specific actions are
+          processed in a random order. This adds an element of unpredictability
+          and requires you to think on your feet.
+        </p>
+        <p>
+          Also, keeping track of your resource spending is crucial. As you
+          construct buildings, train units, and perform actions, your resources
+          deplete. Make sure to balance your spending and resource gathering to
+          ensure steady growth.
+        </p>
+        <p>
+          Make sure to plan your moves and use your limited actions per turn
+          wisely. We hope this guide helps you get started with our game. Dive
+          in, strategize, and conquer. Good luck and have fun!
         </p>
       </div>
     </div>
@@ -388,7 +420,8 @@ import { io } from "socket.io-client";
 export default {
   data() {
     return {
-      justFinishedDragging: false,
+      alerts: [],
+      chosen: false,
 
       user: null,
       userIdentifierInfo: {},
@@ -457,6 +490,14 @@ export default {
     },
   },
   methods: {
+    addAlert(message) {
+      const id = Date.now(); // Unique ID for the alert
+      this.alerts.push({ id, message });
+
+      setTimeout(() => {
+        this.alerts = this.alerts.filter((alert) => alert.id !== id);
+      }, 5000);
+    },
     connectToSocket() {
       // Disconnect the current socket if it exists
       if (this.$socket) {
@@ -502,7 +543,7 @@ export default {
             },
           });
         } else {
-          this.sendAlert("Not enough gold to build this structure.");
+          this.addAlert("Not enough gold to build this structure.");
         }
       };
       const moveOrShootOrMineAction = (action) => {
@@ -530,7 +571,7 @@ export default {
           this.selectedActionType === "tower shoot"
         ) {
           if (!this.user.resources) {
-            this.sendAlert("Please relogin");
+            this.addAlert("Please relogin");
             this.logout();
             return;
           }
@@ -540,7 +581,7 @@ export default {
           //     this.user.resources
           //   )
           // ) {
-          //   this.sendAlert("Not enough resources to perform this action");
+          //   this.addAlert("Not enough resources to perform this action");
           //   return;
           // }
           this.sendAction({
@@ -552,6 +593,8 @@ export default {
 
         this.actionPopup = false;
         this.selectedActionType = null;
+        this.chosen = false;
+        this.selectedCell = null;
       };
 
       const actionsMap = {
@@ -575,27 +618,28 @@ export default {
 
     onActionClick(actionType) {
       if (actionType === "spawn worker" && this.user.resources.gold < 150) {
-        this.sendAlert("Not enough gold to spawn a worker.");
+        this.addAlert("Not enough gold to spawn a worker.");
         return;
       }
       if (actionType === "spawn axeman" && this.user.resources.gold < 250) {
-        this.sendAlert("Not enough gold to spawn an axeman.");
+        this.addAlert("Not enough gold to spawn an axeman.");
         return;
       }
       this.actionPopup = true;
       this.selectedActionType = actionType;
       this.targetCell = null;
+      this.chosen = true;
     },
     selectTargetCell(cell) {
       this.targetCell = cell;
       this.handleAction(this.selectedActionType);
     },
     cancelTargetSelection() {
-      console.log("here");
       this.selectedCell = null;
       this.actionPopup = false;
       this.selectedActionType = null;
       this.targetCell = null;
+      this.chosen = false;
     },
     getCellStyle(cell) {
       const baseStyle = {
@@ -608,7 +652,7 @@ export default {
       if (this.actionPopup) {
         baseStyle["filter"] = this.validateTarget(cell)
           ? "brightness(1.05)"
-          : "brightness(0.6)";
+          : "brightness(0.4)";
       }
 
       if (cell.unit || cell.building) {
@@ -729,6 +773,10 @@ export default {
       if (this.isDragging) {
         return;
       }
+      if (this.selectedActionType) {
+        return;
+      }
+      this.chosen = false;
       this.selectedCell = cell;
     },
     handleWheel(event) {
@@ -797,9 +845,7 @@ export default {
       this.dragStartX = event.clientX;
       this.dragStartY = event.clientY;
     },
-    sendAlert(message) {
-      alert(message);
-    },
+
     async logout() {
       try {
         const response = await fetch(`http://localhost:3000/auth/logout`, {
@@ -969,14 +1015,14 @@ export default {
 <style scoped>
 .progress-bar {
   background-color: #ddd;
-  border-radius: 3px;
+  /* border-radius: 3px; */
   overflow: hidden;
   width: 100%;
 }
 
 .progress-bar-inner {
-  height: 10px;
-  border-radius: 3px;
+  height: 14px;
+  /* border-radius: 3px; */
 }
 
 .header-container {
@@ -986,6 +1032,7 @@ export default {
   padding: 10px;
   background-color: #1d1e22;
   max-height: 50px;
+  position: relative;
 }
 
 .left-section,
@@ -997,9 +1044,12 @@ export default {
 
 .header-item {
   margin-right: 1rem;
-  font-size: 1.1rem;
   font-weight: 600;
   color: rgb(240, 240, 240);
+}
+.left-section div,
+.logout-size {
+  font-size: clamp(9px, 1.6vw, 18px);
 }
 
 .resource-item {
@@ -1017,9 +1067,11 @@ export default {
 .logout {
   cursor: pointer;
   color: #61dafb;
-  font-size: 1.1rem;
   font-weight: 600;
   text-decoration: underline;
+}
+.logout:hover {
+  color: #3fa7c4;
 }
 /* .logout {
   border: 2px solid black;
@@ -1064,9 +1116,9 @@ export default {
   align-items: center;
 }
 
-.first-part-info {
+/* .first-part-info {
   min-height: 154px;
-}
+} */
 .info-section-image {
   max-height: 240px;
   display: flex;
@@ -1137,7 +1189,7 @@ export default {
 
 .modal {
   position: fixed;
-  z-index: 1000;
+  z-index: 1000000000;
   left: 0;
   top: 0;
   width: 100%;
@@ -1228,5 +1280,35 @@ export default {
   padding: 0;
   outline: none;
   border: 2px black solid;
+}
+.alerts {
+  position: fixed;
+  top: 70px;
+  left: 0;
+  padding: 10px;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  z-index: 9999;
+}
+
+.alert {
+  margin-top: 10px;
+  background-color: #e74c3c;
+  color: rgb(240, 240, 240);
+  padding: 10px;
+  border-radius: 5px;
+  opacity: 0.9;
+  transition: opacity 0.5s;
+}
+
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 1s;
+}
+
+.fade-leave-to {
+  opacity: 0;
 }
 </style>

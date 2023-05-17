@@ -2,8 +2,8 @@ const Board = require("../../models/board");
 
 const createBoard = async () => {
   console.log("creating new board")
-  const size = 20;
-  const gridSize = 6;
+  const size = 21;
+  const gridSize = 5;
   const newBoard = new Array(size);
   const terrains = ["plains", "plains", "plains", "mountain", "mountain", "tundra"]; // Increased frequency for plains and mountain
 
