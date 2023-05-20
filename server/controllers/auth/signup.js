@@ -40,7 +40,6 @@ const signup = async (req, res) => {
     );
     res.cookie('token', token, {
       httpOnly: true, 
-      // secure: true, 
       sameSite:'Strict',
       maxAge: 7200000 // expires after 2 hours
     });

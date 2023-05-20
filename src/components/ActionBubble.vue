@@ -65,7 +65,7 @@ export default {
   computed: {
     availableActions() {
       let actions = [];
-
+      if (this.user.actions.length === 10) return actions;
       // Check if the current user owns the unit or building
       if (
         this.cell.resource ||
@@ -79,7 +79,8 @@ export default {
         if (this.cell.unit.unitType === "worker") {
           actions.push(
             { actionName: "move worker", icon: "people-carry-box" },
-            { actionName: "worker mine", icon: "people-carry-box" }
+            { actionName: "worker mine", icon: "people-carry-box" },
+            { actionName: "worker attack", icon: "people-carry-box" }
           );
         } else if (this.cell.unit.unitType === "axeman") {
           actions.push(

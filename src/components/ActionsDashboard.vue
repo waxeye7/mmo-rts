@@ -173,7 +173,7 @@ h2 {
   display: flex;
   justify-content: center;
   align-items: center;
-  z-index: 9000;
+  z-index: 99999999000;
   cursor: pointer;
 }
 .curved-minimiser div {

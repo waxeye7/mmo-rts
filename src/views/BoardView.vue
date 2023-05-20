@@ -158,13 +158,13 @@ import { io } from "socket.io-client";
             >
           </div>
 
-          <div class="info-item">
+          <div v-if="selectedCell.building.damage" class="info-item">
             <span>Damage:</span>
             <span>{{ selectedCell.building.damage }}</span>
           </div>
         </div>
         <div v-if="selectedCell.unit">
-          <div class="info-item">
+          <div v-if="selectedCell.unit.damage" class="info-item">
             <span>Unit:</span>
             <span>{{ selectedCell.unit.unitType }}</span>
           </div>
@@ -453,6 +453,7 @@ export default {
         },
         resources: {
           gold: "/images/resources/gold.png",
+          gold2: "/images/resources/gold2.png",
           wood: "/images/resources/wood.png",
           stone: "images/resources/stone.png",
           food: "images/resources/food.png",
@@ -481,6 +482,12 @@ export default {
           this.selectedCell.building.structureType
         ];
       } else if (this.selectedCell.resource) {
+        if (
+          this.selectedCell.resource.resourceType === "gold" &&
+          this.selectedCell.terrain === "plains"
+        ) {
+          return this.imageMapping.resources["gold2"];
+        }
         return this.imageMapping.resources[
           this.selectedCell.resource.resourceType
         ];
@@ -505,7 +512,9 @@ export default {
       }
 
       // Connect to the socket
-      this.$socket = io("http://localhost:3000", { withCredentials: true });
+      this.$socket = io(process.env.VUE_APP_API_URL, {
+        withCredentials: true,
+      });
 
       // Emit the loggedIn event
       this.$socket.emit("loggedIn");
@@ -513,7 +522,7 @@ export default {
     sendAction(action) {
       this.$socket.emit("action", action);
     },
-    handleAction(action) {
+    handleAction(action, creator) {
       const buildAction = (action) => {
         let structureType;
         if (action === "build spawn") {
@@ -531,16 +540,20 @@ export default {
           // Deduct the cost from the user's gold
           this.user.resources.gold -= structureCost[structureType];
 
+          let payload = {
+            x: this.selectedCell.x,
+            y: this.selectedCell.y,
+            username: this.user.username,
+            structureType: structureType,
+          };
+
+          if (creator) payload.creatorId = creator.id;
+
           // Send the action
           this.sendAction({
             id: uuidv4(),
             type: action,
-            payload: {
-              x: this.selectedCell.x,
-              y: this.selectedCell.y,
-              username: this.user.username,
-              structureType: structureType,
-            },
+            payload,
           });
         } else {
           this.addAlert("Not enough gold to build this structure.");
@@ -567,6 +580,7 @@ export default {
           this.selectedActionType === "spawn worker" ||
           this.selectedActionType === "spawn axeman" ||
           this.selectedActionType === "axeman attack" ||
+          this.selectedActionType === "worker attack" ||
           this.selectedActionType === "worker mine" ||
           this.selectedActionType === "tower shoot"
         ) {
@@ -605,6 +619,7 @@ export default {
         "worker mine": () => moveOrShootOrMineAction("worker mine"),
         "tower shoot": () => moveOrShootOrMineAction("tower shoot"),
         "axeman attack": () => moveOrShootOrMineAction("axeman attack"),
+        "worker attack": () => moveOrShootOrMineAction("worker attack"),
         "spawn worker": () => moveOrShootOrMineAction("spawn worker"),
         "spawn axeman": () => moveOrShootOrMineAction("spawn axeman"),
       };
@@ -632,7 +647,9 @@ export default {
     },
     selectTargetCell(cell) {
       this.targetCell = cell;
-      this.handleAction(this.selectedActionType);
+      let creator;
+
+      this.handleAction(this.selectedActionType, creator);
     },
     cancelTargetSelection() {
       this.selectedCell = null;
@@ -677,8 +694,18 @@ export default {
         backgroundImageUrl = "/images/units/worker.png";
       } else if (cell.unit && cell.unit.unitType === "axeman") {
         backgroundImageUrl = "/images/units/axeman.png";
-      } else if (cell.resource && cell.resource.resourceType === "gold") {
+      } else if (
+        cell.resource &&
+        cell.resource.resourceType === "gold" &&
+        cell.terrain === "mountain"
+      ) {
         backgroundImageUrl = "/images/resources/gold.png";
+      } else if (
+        cell.resource &&
+        cell.resource.resourceType === "gold" &&
+        cell.terrain === "plains"
+      ) {
+        backgroundImageUrl = "/images/resources/gold2.png";
       } else if (cell.resource && cell.resource.resourceType === "wood") {
         backgroundImageUrl = "/images/resources/wood.png";
       } else if (cell.resource && cell.resource.resourceType === "stone") {
@@ -733,6 +760,7 @@ export default {
         case "spawn axeman":
           return noUnitBuildingResource && !cell.building && isInRangeOne;
         case "axeman attack":
+        case "worker attack":
           return isInRangeOne && (cell.unit || cell.building);
         case "tower shoot":
           return (
@@ -754,9 +782,12 @@ export default {
     },
     async fetchUserById() {
       try {
-        const response = await fetch(`http://localhost:3000/users/me`, {
-          credentials: "include", // This is required to include the cookie in the request.
-        });
+        const response = await fetch(
+          process.env.VUE_APP_API_URL + `/users/me`,
+          {
+            credentials: "include", // This is required to include the cookie in the request.
+          }
+        );
 
         if (!response.ok) {
           throw new Error(`HTTP error: ${response.status}`);
@@ -848,10 +879,13 @@ export default {
 
     async logout() {
       try {
-        const response = await fetch(`http://localhost:3000/auth/logout`, {
-          method: "GET",
-          credentials: "include",
-        });
+        const response = await fetch(
+          process.env.VUE_APP_API_URL + `/auth/logout`,
+          {
+            method: "GET",
+            credentials: "include",
+          }
+        );
         if (!response.ok) {
           throw new Error("Error logging out.");
         }
@@ -879,9 +913,12 @@ export default {
     },
     async getAllUserIdentifiers() {
       try {
-        const response = await fetch(`http://localhost:3000/users/all`, {
-          credentials: "include",
-        });
+        const response = await fetch(
+          process.env.VUE_APP_API_URL + `/users/all`,
+          {
+            credentials: "include",
+          }
+        );
 
         if (!response.ok) {
           throw new Error(`HTTP error: ${response.status}`);
@@ -897,7 +934,7 @@ export default {
     async cancelAction(id) {
       try {
         const response = await fetch(
-          `http://localhost:3000/users/actions/${id}`,
+          process.env.VUE_APP_API_URL + `/users/actions/${id}`,
           {
             method: "DELETE",
             headers: {
@@ -1109,7 +1146,6 @@ export default {
   z-index: 2;
   border-radius: 0 0 0 6px;
 }
-
 .info-item {
   display: flex;
   justify-content: space-between;

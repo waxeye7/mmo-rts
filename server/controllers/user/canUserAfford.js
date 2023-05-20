@@ -1,5 +1,5 @@
 const User = require("../../models/user");
-const getCost = require('../../../CONSTANTS/getCost');
+const getCost = require('../../CONSTANTS/getCost');
 const canUserAfford = async (userId, instance) => {
   // Get the structure cost
   const cost = getCost(instance);

@@ -200,7 +200,9 @@ export default {
       }
 
       // Connect to the socket
-      this.$socket = io("http://localhost:3000", { withCredentials: true });
+      this.$socket = io(process.env.VUE_APP_API_URL, {
+        withCredentials: true,
+      });
 
       // Emit the loggedIn event
       this.$socket.emit("loggedIn");
@@ -213,17 +215,20 @@ export default {
     },
     async login() {
       try {
-        const response = await fetch(`http://localhost:3000/auth/login`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            username: this.loginForm.username,
-            password: this.loginForm.password,
-          }),
-          credentials: "include", // Include cookies in the request
-        });
+        const response = await fetch(
+          process.env.VUE_APP_API_URL + `/auth/login`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              username: this.loginForm.username,
+              password: this.loginForm.password,
+            }),
+            credentials: "include", // Include cookies in the request
+          }
+        );
 
         if (!response.ok) {
           throw new Error("Error logging in.");
@@ -248,18 +253,21 @@ export default {
       }
       console.log("Signup data:", this.signupForm);
       try {
-        const response = await fetch(`http://localhost:3000/auth/signup`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            username: this.signupForm.username,
-            password: this.signupForm.password,
-            identifier: this.signupForm.identifier,
-          }),
-          credentials: "include", // Include cookies in the request
-        });
+        const response = await fetch(
+          process.env.VUE_APP_API_URL + `/auth/signup`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              username: this.signupForm.username,
+              password: this.signupForm.password,
+              identifier: this.signupForm.identifier,
+            }),
+            credentials: "include", // Include cookies in the request
+          }
+        );
 
         if (!response.ok) {
           throw new Error("Error signing up.");

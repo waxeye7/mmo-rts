@@ -1,5 +1,5 @@
 const User = require('../../models/user');
-const getCost = require('../../../CONSTANTS/getCost');
+const getCost = require('../../CONSTANTS/getCost');
 
 const updateUserResources = async (userId, resources = {}) => {
   // Get the structure cost

@@ -1,4 +1,5 @@
 const cron = require('node-cron');
+const { v4: uuidv4 } = require('uuid');
 require("dotenv").config();
 const mongoose = require('mongoose')
 const url = 'mongodb://127.0.0.1:27017/mmo-rts';
@@ -11,10 +12,35 @@ const addAction = require('./controllers/user/addAction');
 const User = require('./models/user');
 const canUserAfford = require('./controllers/user/canUserAfford');
 const updateUserResources = require('./controllers/user/updateUserResources');
-const getCost = require('../CONSTANTS/getCost');
 const { buildActionsQueue, spawningActionsQueue, resourceGatheringActionsQueue, conflictActionsQueue, moveActionsQueue } = require('./actionsQueue');
 const jwt = require('jsonwebtoken');
+
 const cookie = require('cookie');
+const express = require('express');
+const http = require('http');
+const app = express();
+
+let server;
+if (process.env.NODE_ENV === 'production') {
+  // Use HTTPS with SSL certificates in production
+  const https = require('https');
+  const fs = require('fs');
+
+  const privateKey = fs.readFileSync('/etc/letsencrypt/live/mmo-rts.com/privkey.pem', 'utf8');
+  const certificate = fs.readFileSync('/etc/letsencrypt/live/mmo-rts.com/fullchain.pem', 'utf8');
+  const credentials = { key: privateKey, cert: certificate };
+
+  server = https.createServer(credentials, app);
+  server.listen(3000, () => {
+    console.log('Server listening on port 3000');
+  });
+} else {
+  // Use plain HTTP for development
+  server = http.createServer(app);
+  server.listen(3000, () => {
+    console.log('Server listening on port 3000');
+  });
+}
 
 
 mongoose.connect(url, { useNewUrlParser: true })
@@ -30,16 +56,14 @@ db.on('error', err => {
   console.error('connection error:', err)
 })
 
-const express = require('express');
-const http = require('http');
 const socketIO = require('socket.io');
 const bodyParser = require("body-parser");
-const app = express();
-const server = http.createServer(app);
+
+
 const cors = require('cors');
 const io = socketIO(server, {
   cors: {
-    origin: 'http://localhost:8080',
+    origin: process.env.NODE_ENV === 'production' ? 'https://mmo-rts.com' : 'http://localhost:8080',
     methods: ['GET', 'POST', 'PUT', 'DELETE'],
     allowedHeaders: ['Content-Type'],
     credentials: true
@@ -49,9 +73,8 @@ const io = socketIO(server, {
 // Configure CORS for Socket.IO
 io.use((socket, next) => {
   const origin = socket.handshake.headers.origin;
-  // Add any additional origins you want to allow here
-  const allowedOrigins = ['http://localhost:8080'];
-  if (allowedOrigins.includes(origin)) {
+  const allowedOrigin = process.env.NODE_ENV === 'production' ? 'https://mmo-rts.com' : 'http://localhost:8080';
+  if (allowedOrigin === origin) {
     next();
   } else {
     return next(new Error('CORS not allowed'));
@@ -60,7 +83,7 @@ io.use((socket, next) => {
 
 // Configure CORS for Express
 app.use(cors({
-  origin: 'http://localhost:8080',
+  origin: process.env.NODE_ENV === 'production' ? 'https://mmo-rts.com' : 'http://localhost:8080',
   methods: ['GET', 'POST', 'PUT', 'DELETE'],
   allowedHeaders: ['Content-Type'],
   credentials: true
@@ -181,11 +204,7 @@ app.use("/boards", BoardsRoute);
 const AuthRoute = require("./routes/auth.js");
 app.use("/auth", AuthRoute);
 
-// Start the server
-const port = process.env.PORT || 3000;
-server.listen(port, () => {
-  console.log(`Server is running on port ${port}`);
-});
+
 
 
 
@@ -337,16 +356,17 @@ const processBuildAction = async (action, userId) => {
   }
   if(!await canUserAfford(userId, structureType)) return;
   await addAction(action, userId);
-  let buildingObject = { structureType, owner: username };
+  let buildingObject = {id: uuidv4(), structureType, owner: username };
   if(structureType === "structureTower") {
     buildingObject.damage = 100;
     buildingObject.hits = 250;
     buildingObject.hitsMax = 250;
+    buildingObject.actionTaken = false;
   }
   else if(structureType === "structureSpawn") {
     buildingObject.hits = 500;
     buildingObject.hitsMax = 500;
-    buildingObject.spawning = false;
+    buildingObject.actionTaken = false;
   }
 
   board[y][x].building = buildingObject;
@@ -366,8 +386,13 @@ const processTowerShootAction = async (action, userId) => {
   if(!tower) return;
   if(tower.owner !== username) return;
   if(tower.structureType !== "structureTower") return;
+  if(tower.actionTaken) {
+    console.log("tower out of actions")
+    return;
+  }
   if(target.unit) target.unit.hits -= tower.damage;
   if(target.building) target.building.hits -= tower.damage;
+  tower.actionTaken = true;
 };
 
 const processAxemanAttackAction = async (action, userId) => {
@@ -383,9 +408,35 @@ const processAxemanAttackAction = async (action, userId) => {
   if(!axeman) return;
   if(axeman.owner !== username) return;
   if(axeman.unitType !== "axeman") return;
+  if(axeman.actionTaken) {
+  console.log("axeman out of non move actions")
+  return;
+}
   if(target.unit) target.unit.hits -= axeman.damage;
   if(target.building) target.building.hits -= axeman.damage;
-  
+  axeman.actionTaken = true;
+};
+
+const processWorkerAttackAction = async (action, userId) => {
+  const { x, y, targetX, targetY, username } = action.payload;
+
+  if (!(await isValidUser(username, userId))) {
+    return;
+  }
+
+  const worker = board[y][x].unit;
+  const target = board[targetY][targetX];
+  if(!target || !target.unit && !target.building) return;
+  if(!worker) return;
+  if(worker.owner !== username) return;
+  if(worker.unitType !== "worker") return;
+  if(worker.actionTaken) {
+  console.log("worker out of non move actions")
+  return;
+}
+  if(target.unit) target.unit.hits -= worker.damage;
+  if(target.building) target.building.hits -= worker.damage;
+  worker.actionTaken = true;
 };
 
 const processSpawnWorkerAction = async (action, userId) => {
@@ -406,11 +457,12 @@ const processSpawnWorkerAction = async (action, userId) => {
   if(spawn.owner !== username) return;
   if(spawn.structureType !== "structureSpawn") return;
   if(checkIfCellIsOccupied(targetX,targetY)) return;
-  if(spawn.spawning) {
+  if(spawn.actionTaken) {
     console.log("spawn already spawning")
     return;
   }
   target.unit = {
+    id: uuidv4(),
     unitType: "worker",
     pos: {
       x: targetX,
@@ -421,10 +473,11 @@ const processSpawnWorkerAction = async (action, userId) => {
     hitsMax: 100,
     damage: 12,
     nonMoveActions:1,
-    moved:false
+    actionTaken:false,
   }
-  spawn.spawning = true;
   await updateUserResources(userId, {gold:"worker"});
+  spawn.actionTaken = true;
+
 };
 
 const processSpawnAxemanAction = async (action, userId) => {
@@ -445,11 +498,12 @@ const processSpawnAxemanAction = async (action, userId) => {
   if(spawn.owner !== username) return;
   if(spawn.structureType !== "structureSpawn") return;
   if(checkIfCellIsOccupied(targetX,targetY)) return;
-  if(spawn.spawning) {
+  if(spawn.actionTaken) {
     console.log("spawn already spawning")
     return;
   }
   target.unit = {
+    id: uuidv4(),
     unitType: "axeman",
     pos: {
       x: targetX,
@@ -460,7 +514,7 @@ const processSpawnAxemanAction = async (action, userId) => {
     hitsMax: 200,
     damage: 50,
     nonMoveActions:1,
-    moved:false
+    actionTaken:false
   }
   await updateUserResources(userId, {gold:"axeman"});
 
@@ -484,7 +538,7 @@ const processWorkerMineAction = async (action, userId) => {
 
   if(worker.owner !== username) return;
 
-  if(worker.nonMoveActions && worker.nonMoveActions <= 0) {
+  if(worker.actionTaken) {
     console.log("worker out of non move actions")
     return;
   }
@@ -505,6 +559,7 @@ const processWorkerMineAction = async (action, userId) => {
 
   // Update the user's resources in the database
   await updateUserResources(userId, update);
+  worker.actionTaken = true;
 };
 
 const processMoveWorkerAction = async (action, userId) => {
