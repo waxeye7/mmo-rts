@@ -9,7 +9,7 @@ const me = async (req, res) => {
       const decoded = jwt.verify(token, process.env.AUTH_SECRET_KEY);
 
       const user = await User.findOne({ _id: decoded.id }).select(
-        "username actions resources -_id"
+        "username actions resources units buildings -_id"
       );
       if (!user) {
         throw new Error("User not found");

@@ -15,28 +15,30 @@
         <font-awesome-icon :icon="action.icon" />
         <span>{{ action.actionName }}</span>
         <div v-if="action.cost" class="cost-label">
-          <img
-            v-if="action.cost.type === 'gold'"
-            class="small-icon"
-            src="/images/icons/gold.png"
-          />
-          <img
-            v-if="action.cost.type === 'wood'"
-            class="small-icon"
-            src="/images/icons/wood.png"
-          />
-          <img
-            v-if="action.cost.type === 'stone'"
-            class="small-icon"
-            src="/images/icons/stone.png"
-          />
-          <img
-            v-if="action.cost.type === 'food'"
-            class="small-icon"
-            src="/images/icons/food.png"
-          />
-          <i :class="`fa fa-${action.cost.type}`"></i>
-          {{ action.cost.amount }}
+          <template v-for="(cost, index) in action.cost" :key="index">
+            <img
+              v-if="cost.type === 'gold'"
+              class="small-icon"
+              src="/images/icons/gold.png"
+            />
+            <img
+              v-if="cost.type === 'wood'"
+              class="small-icon"
+              src="/images/icons/wood.png"
+            />
+            <img
+              v-if="cost.type === 'stone'"
+              class="small-icon"
+              src="/images/icons/stone.png"
+            />
+            <img
+              v-if="cost.type === 'food'"
+              class="small-icon"
+              src="/images/icons/food.png"
+            />
+            <i :class="`fa fa-${cost.type}`"></i>
+            {{ cost.amount }}
+          </template>
         </div>
       </button>
     </div>
@@ -87,6 +89,11 @@ export default {
             { actionName: "move axeman", icon: "people-carry-box" },
             { actionName: "axeman attack", icon: "people-carry-box" }
           );
+        } else if (this.cell.unit.unitType === "archer") {
+          actions.push(
+            { actionName: "move archer", icon: "people-carry-box" },
+            { actionName: "archer shoot", icon: "people-carry-box" }
+          );
         }
       } else if (this.cell.building) {
         if (this.cell.building.structureType === "structureSpawn") {
@@ -94,12 +101,17 @@ export default {
             {
               actionName: "spawn worker",
               icon: "people-carry-box",
-              cost: { type: "gold", amount: 150 },
+              cost: [{ type: "gold", amount: 150 }],
             },
             {
               actionName: "spawn axeman",
               icon: "people-carry-box",
-              cost: { type: "gold", amount: 250 },
+              cost: [{ type: "gold", amount: 250 }],
+            },
+            {
+              actionName: "spawn archer",
+              icon: "people-carry-box",
+              cost: [{ type: "gold", amount: 300 }],
             }
           );
         } else if (this.cell.building.structureType === "structureTower") {
@@ -110,12 +122,15 @@ export default {
           {
             actionName: "build spawn",
             icon: "people-carry-box",
-            cost: { type: "gold", amount: 1500 },
+            cost: [{ type: "gold", amount: 1500 }],
           },
           {
             actionName: "build tower",
             icon: "people-carry-box",
-            cost: { type: "gold", amount: 750 },
+            cost: [
+              { type: "gold", amount: 750 },
+              // { type: "wood", amount: 250 },
+            ],
           }
         );
       }
@@ -207,9 +222,6 @@ export default {
   border-radius: 5 px;
 }
 
-.cost-label i {
-  margin-right: 5px;
-}
 .small-icon {
   height: 20px;
   width: 20px;

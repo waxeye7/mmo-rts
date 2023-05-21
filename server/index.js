@@ -14,12 +14,13 @@ const canUserAfford = require('./controllers/user/canUserAfford');
 const updateUserResources = require('./controllers/user/updateUserResources');
 const { buildActionsQueue, spawningActionsQueue, resourceGatheringActionsQueue, conflictActionsQueue, moveActionsQueue } = require('./actionsQueue');
 const jwt = require('jsonwebtoken');
-
+const getBoardSize = require("./CONSTANTS/getBoardSize");
 const cookie = require('cookie');
 const express = require('express');
 const http = require('http');
-const app = express();
+const getTimerAmount = require('./CONSTANTS/getTimerAmount');
 
+const app = express();
 let server;
 if (process.env.NODE_ENV === 'production') {
   // Use HTTPS with SSL certificates in production
@@ -204,6 +205,9 @@ app.use("/boards", BoardsRoute);
 const AuthRoute = require("./routes/auth.js");
 app.use("/auth", AuthRoute);
 
+// Voiceover routes
+const VoiceoverRoute = require("./routes/voiceovers.js");
+app.use("/voiceover", VoiceoverRoute);
 
 
 
@@ -246,16 +250,16 @@ const handleAction = async (socket, action, userId) => {
     if(action.type === 'build spawn' || action.type === 'build tower') {
       buildActionsQueue.push({action, userId});
     }
-    else if(action.type === 'spawn worker' || action.type === 'spawn axeman') {
+    else if(action.type === 'spawn worker' || action.type === 'spawn axeman' || action.type === 'spawn archer') {
       spawningActionsQueue.push({action, userId});
     }
     else if(action.type === 'worker mine') {
       resourceGatheringActionsQueue.push({action, userId});
     }
-    else if(action.type === 'tower shoot' || action.type === 'axeman attack' || action.type === 'worker attack') {
+    else if(action.type === 'tower shoot' || action.type === 'axeman attack' || action.type === 'worker attack' || action.type === 'archer shoot') {
       conflictActionsQueue.push({action, userId});
     } 
-    else if (action.type === 'move worker' || action.type === 'move axeman') {
+    else if (action.type === 'move worker' || action.type === 'move axeman' || action.type === 'move archer') {
       moveActionsQueue.push({action, userId});
     }
     else {
@@ -283,6 +287,9 @@ const processActions = async () => {
     else if(request.action.type === 'spawn axeman'){
       await processSpawnAxemanAction(request.action, request.userId);
     }
+    else if(request.action.type === 'spawn archer'){
+      await processSpawnArcherAction(request.action, request.userId);
+    }
   }
   spawningActionsQueue.length = 0;
 
@@ -302,6 +309,10 @@ const processActions = async () => {
     }
     else if(request.action.type === "tower shoot") {
       await processTowerShootAction(request.action, request.userId);
+    }
+
+    else if(request.action.type === "archer shoot") {
+      await processArcherShootAction(request.action, request.userId);
     }
   }
   conflictActionsQueue.length = 0;
@@ -330,6 +341,9 @@ const processActions = async () => {
     else if(request.action.type === "move axeman"){
       await processMoveAxemanAction(request.action, request.userId);
     }
+    else if(request.action.type === "move archer"){
+      await processMoveArcherAction(request.action, request.userId);
+    }
   }
   moveActionsQueue.length = 0;
 
@@ -341,6 +355,111 @@ const processActions = async () => {
       else if(cell.building && cell.building.actionTaken) cell.building.actionTaken = false;
     }
   }
+
+
+  // Calculate the number of chunks in each dimension
+  let availableChunks = [];
+  let boardSize = getBoardSize();
+  const chunksX = Math.ceil(boardSize / 10);
+  const chunksY = Math.ceil(boardSize / 10);
+  // Function to check if a cell has a unit or building within a 1-cell radius
+  function hasUnitOrBuildingNearby(x, y) {
+    for (let i = Math.max(0, y - 1); i <= Math.min(19, y + 1); i++) {
+      for (let j = Math.max(0, x - 1); j <= Math.min(19, x + 1); j++) {
+        if(!board[i][j] || x == j && y === i) continue;
+        if (board[i][j].unit || board[i][j].building) {
+          return true;
+        }
+      }
+    }
+    return false;
+  }
+
+// Function to get a random cell within a chunk
+function getRandomCellInChunk(chunkX, chunkY) {
+  const startX = chunkX * 10;
+  const startY = chunkY * 10;
+  const availableCells = [];
+
+  for (let y = startY; y < startY + 10; y++) {
+    for (let x = startX; x < startX + 10; x++) {
+      if (!hasUnitOrBuildingNearby(x, y) && !board[y][x].unit && !board[y][x].resource && board[y][x].terrain !== "tundra") {
+        availableCells.push({ x, y });
+      }
+    }
+  }
+
+  if (availableCells.length > 0) {
+    const randomIndex = Math.floor(Math.random() * availableCells.length);
+    const { x, y } = availableCells[randomIndex];
+    return { x, y };
+  }
+
+  return null;
+}
+// Iterate through each chunk on the map
+for (let chunkY = 0; chunkY < chunksY; chunkY++) {
+  for (let chunkX = 0; chunkX < chunksX; chunkX++) {
+    const startX = chunkX * 10;
+    const startY = chunkY * 10;
+    // Check if there is a deer in the current chunk
+    let hasDeerInChunk = false;
+    for (let y = startY; y < startY + 10; y++) {
+      for (let x = startX; x < startX + 10; x++) {
+        if (board && board[y] && board[y][x] && board[y][x].unit && board[y][x].unit.unitType === "deer") {
+          hasDeerInChunk = true;
+
+          // Generate random directions in the range [-1, 1] for both x and y
+          const moveX = Math.floor(Math.random() * 3) - 1;
+          const moveY = Math.floor(Math.random() * 3) - 1;
+
+          // Calculate the new position based on the random directions within the chunk
+          const newX = x + moveX;
+          const newY = y + moveY;
+
+          // Check if the new position is within the chunk boundaries
+          if (newX >= startX && newX < startX + 10 && newY >= startY && newY < startY + 10 && board[newY] && board[newY][newX] && !board[newY][newX].unit && !board[newY][newX].building && !board[newY][newX].resource && !board[newY][newX].terrain !== "tundra") {
+            // Move the deer to the new position within the chunk
+            board[newY][newX].unit = board[y][x].unit;
+            board[y][x].unit = null;
+          }
+
+          break;
+        }
+      }
+      if (hasDeerInChunk) {
+        break;
+      }
+    }
+    // If no deer in the chunk, add it to availableChunks array
+    if (!hasDeerInChunk) {
+      availableChunks.push({ chunkX, chunkY });
+    }
+  }
+}
+// Spawn the deers using the availableChunks array
+for (let i = 0; i < availableChunks.length; i++) {
+  const { chunkX, chunkY } = availableChunks[i];
+  const numAttempts = 2;
+  let deerSpawned = false;
+
+  for (let j = 0; j < numAttempts; j++) {
+    const cell = getRandomCellInChunk(chunkX, chunkY);
+
+    if (cell) {
+      board[cell.y][cell.x].unit = { owner: "game", pos: { x: cell.x, y: cell.y }, unitType: "deer", hits: 60, hitsMax: 60 };
+      deerSpawned = true;
+      break;
+    }
+  }
+
+  if (deerSpawned) {
+    // If deer is spawned in the current chunk, mark it as spawned and move to the next chunk
+    availableChunks[i].spawned = true;
+  }
+}
+
+
 
   // Save the updated board state to the database
   await saveBoardState(board);
@@ -359,6 +478,7 @@ const processBuildAction = async (action, userId) => {
   let buildingObject = {id: uuidv4(), structureType, owner: username };
   if(structureType === "structureTower") {
     buildingObject.damage = 100;
+    buildingObject.range = 3;
     buildingObject.hits = 250;
     buildingObject.hitsMax = 250;
     buildingObject.actionTaken = false;
@@ -391,6 +511,9 @@ const processTowerShootAction = async (action, userId) => {
     return;
   }
   if(target.unit) target.unit.hits -= tower.damage;
+  if(target.unit && target.unit.unitType === "deer" && target.unit.hits <= 0 && target.unit.hits > -tower.damage) {
+    await updateUserResources(userId, {food:100});
+  }
   if(target.building) target.building.hits -= tower.damage;
   tower.actionTaken = true;
 };
@@ -413,6 +536,9 @@ const processAxemanAttackAction = async (action, userId) => {
   return;
 }
   if(target.unit) target.unit.hits -= axeman.damage;
+  if(target.unit && target.unit.unitType === "deer" && target.unit.hits <= 0 && target.unit.hits > -axeman.damage) {
+    await updateUserResources(userId, {food:100});
+  }
   if(target.building) target.building.hits -= axeman.damage;
   axeman.actionTaken = true;
 };
@@ -435,9 +561,38 @@ const processWorkerAttackAction = async (action, userId) => {
   return;
 }
   if(target.unit) target.unit.hits -= worker.damage;
+  if(target.unit && target.unit.unitType === "deer" && target.unit.hits <= 0 && target.unit.hits > -worker.damage) {
+    await updateUserResources(userId, {food:100});
+  }
   if(target.building) target.building.hits -= worker.damage;
   worker.actionTaken = true;
 };
+
+const processArcherShootAction = async (action, userId) => {
+  const { x, y, targetX, targetY, username } = action.payload;
+
+  if (!(await isValidUser(username, userId))) {
+    return;
+  }
+
+  const archer = board[y][x].unit;
+  const target = board[targetY][targetX];
+  if(!target || !target.unit && !target.building) return;
+  if(!archer) return;
+  if(archer.owner !== username) return;
+  if(archer.unitType !== "archer") return;
+  if(archer.actionTaken) {
+  console.log("archer out of non move actions")
+  return;
+}
+  if(target.unit) target.unit.hits -= archer.damage;
+  if(target.unit && target.unit.unitType === "deer" && target.unit.hits <= 0 && target.unit.hits > -archer.damage) {
+    await updateUserResources(userId, {food:100});
+  }
+  if(target.building) target.building.hits -= archer.damage;
+  archer.actionTaken = true;
+};
+
 
 const processSpawnWorkerAction = async (action, userId) => {
   const { x, y, targetX, targetY, username } = action.payload;
@@ -472,7 +627,7 @@ const processSpawnWorkerAction = async (action, userId) => {
     hits: 100,
     hitsMax: 100,
     damage: 12,
-    nonMoveActions:1,
+    range: 1,
     actionTaken:false,
   }
   await updateUserResources(userId, {gold:"worker"});
@@ -513,12 +668,55 @@ const processSpawnAxemanAction = async (action, userId) => {
     hits: 200,
     hitsMax: 200,
     damage: 50,
-    nonMoveActions:1,
+    range:1,
     actionTaken:false
   }
   await updateUserResources(userId, {gold:"axeman"});
 
 };
+
+
+const processSpawnArcherAction = async (action, userId) => {
+  const { x, y, targetX, targetY, username } = action.payload;
+
+
+  if (!(await isValidUser(username, userId))) {
+    return;
+  }
+
+  if(!await canUserAfford(userId, "archer")) return;
+
+
+  const spawn = board[y][x].building;
+  const target = board[targetY][targetX];
+  if(!target) return;
+  if(!spawn) return;
+  if(spawn.owner !== username) return;
+  if(spawn.structureType !== "structureSpawn") return;
+  if(checkIfCellIsOccupied(targetX,targetY)) return;
+  if(spawn.actionTaken) {
+    console.log("spawn already spawning")
+    return;
+  }
+  target.unit = {
+    id: uuidv4(),
+    unitType: "archer",
+    pos: {
+      x: targetX,
+      y: targetY
+    },
+    owner: username,
+    hits: 150,
+    hitsMax: 150,
+    damage: 35,
+    range:2,
+    actionTaken:false,
+  }
+  await updateUserResources(userId, {gold:"archer"});
+  spawn.actionTaken = true;
+
+};
+
 
 const processWorkerMineAction = async (action, userId) => {
   const { x, y, targetX, targetY, username } = action.payload;
@@ -599,6 +797,24 @@ const processMoveAxemanAction = async (action, userId) => {
   board[targetY][targetX].unit = axeman;
 };
 
+const processMoveArcherAction = async (action, userId) => {
+  const { x, y, targetX, targetY, username } = action.payload;
+  if (!(await isValidUser(username, userId))) {
+    return;
+  }
+  const archer = board[y][x].unit;
+  const target = board[targetY][targetX];
+  if(!archer) return;
+  if(!target) return;
+  if(archer.unitType !== "archer") return;
+  if(archer.owner !== username) return;
+  if(checkIfCellIsOccupied(targetX,targetY)) return;
+  archer.pos.x = targetX;
+  archer.pos.y = targetY;
+  board[y][x].unit = null;
+  board[targetY][targetX].unit = archer;
+};
+
 
 
 const isValidUser = async (username, userId) => {
@@ -614,9 +830,8 @@ const isValidUser = async (username, userId) => {
 
 
 const checkIfCellIsOccupied = (x, y) => {
-  return board[y][x].unit || board[y][x].building || board[y][x].unit;
+  return board[y][x].unit || board[y][x].building;
 };
-
 
 
 const broadcastRemainingTime = () => {
@@ -640,27 +855,21 @@ broadcastRemainingTime();
 //   }
 // }, 1000);
 
-
-cron.schedule('*/30 * * * * *', async () => {
+cron.schedule('*/20 * * * * *', async () => {
 // cron.schedule('0 */12 * * *', async () => {
-
   await processActions();
   const resetSuccessful = await resetActions();
-
 
   if(resetSuccessful) {
       // Emit 'actionsReset' event to all connected clients
       io.sockets.emit('actionsReset');
   }
-
-
-  const newTimestamp = Date.now() + 30 * 1000;
-  // const newTimestamp = Date.now() + 12 * 60 * 60 * 1000;
+  const timerValue = getTimerAmount();
+  const newTimestamp = Date.now() + timerValue;
   const taskTimestamp = await TaskTimestamp.findOne({});
   taskTimestamp.timestamp = newTimestamp;
   await taskTimestamp.save();
   nextTaskTimestamp = newTimestamp;
-
   // Broadcast the remaining time
   broadcastRemainingTime();
 });

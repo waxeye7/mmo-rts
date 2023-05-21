@@ -247,6 +247,10 @@ export default {
       }
     },
     async signup() {
+      if(this.signupForm.username === "game") {
+        alert("Username cannot be 'game', please don't use a reserved username.");
+        return;
+      }
       if (this.signupForm.password !== this.signupForm.passwordConfirm) {
         alert("Passwords do not match!");
         return;

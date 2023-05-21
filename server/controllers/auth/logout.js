@@ -2,8 +2,10 @@ const logout = async (req, res) => {
   try {
     // This will throw an error if the 'token' cookie does not exist
     if (!req.cookies.token) {
-      throw new Error('No authentication token cookie found');
+      res.status(200).send('Logged out because no token');
+      return;
     }
+    
     res.clearCookie('token');
     res.status(200).send('Logged out');
   } catch (error) {

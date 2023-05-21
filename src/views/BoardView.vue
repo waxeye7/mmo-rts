@@ -100,6 +100,7 @@ import { io } from "socket.io-client";
         <UserIdentifier
           v-if="
             selectedCell.unit.owner &&
+            selectedCell.unit.owner !== 'game' &&
             userIdentifierInfo[selectedCell.unit.owner]
           "
           :backgroundColor="
@@ -117,6 +118,7 @@ import { io } from "socket.io-client";
         <UserIdentifier
           v-if="
             selectedCell.building.owner &&
+            selectedCell.building.owner !== 'game' &&
             userIdentifierInfo[selectedCell.building.owner]
           "
           :backgroundColor="
@@ -162,9 +164,13 @@ import { io } from "socket.io-client";
             <span>Damage:</span>
             <span>{{ selectedCell.building.damage }}</span>
           </div>
+          <div v-if="selectedCell.building.range" class="info-item">
+            <span>Range:</span>
+            <span>{{ selectedCell.building.range }}</span>
+          </div>
         </div>
         <div v-if="selectedCell.unit">
-          <div v-if="selectedCell.unit.damage" class="info-item">
+          <div v-if="selectedCell.unit.unitType" class="info-item">
             <span>Unit:</span>
             <span>{{ selectedCell.unit.unitType }}</span>
           </div>
@@ -180,10 +186,13 @@ import { io } from "socket.io-client";
               }}</span
             >
           </div>
-
-          <div class="info-item">
+          <div v-if="selectedCell.unit.damage" class="info-item">
             <span>Damage:</span>
             <span>{{ selectedCell.unit.damage }}</span>
+          </div>
+          <div v-if="selectedCell.unit.range" class="info-item">
+            <span>Range:</span>
+            <span>{{ selectedCell.unit.range }}</span>
           </div>
         </div>
         <div v-if="selectedCell.resource">
@@ -444,12 +453,19 @@ export default {
         units: {
           worker: "/images/units/worker.png",
           axeman: "/images/units/axeman.png",
+          archer: "/images/units/archer.png",
+          deer: "/images/units/deer.png",
           // ... other unit types
         },
         buildings: {
           structureSpawn: "/images/buildings/structureSpawn.png",
           structureTower: "/images/buildings/structureTower.png",
           // ... other building types
+        },
+        terrain: {
+          plains: "/images/terrain/plains.png",
+          mountain: "/images/terrain/mountain.png",
+          tundra: "/images/terrain/tundra.png",
         },
         resources: {
           gold: "/images/resources/gold.png",
@@ -492,7 +508,7 @@ export default {
           this.selectedCell.resource.resourceType
         ];
       } else {
-        return null;
+        return this.imageMapping.terrain[this.selectedCell.terrain];
       }
     },
   },
@@ -556,7 +572,7 @@ export default {
             payload,
           });
         } else {
-          this.addAlert("Not enough gold to build this structure.");
+          this.addAlert("Not enough gold to build", structureType + ".");
         }
       };
       const moveOrShootOrMineAction = (action) => {
@@ -577,11 +593,14 @@ export default {
         if (
           this.selectedActionType === "move worker" ||
           this.selectedActionType === "move axeman" ||
+          this.selectedActionType === "move archer" ||
           this.selectedActionType === "spawn worker" ||
           this.selectedActionType === "spawn axeman" ||
+          this.selectedActionType === "spawn archer" ||
           this.selectedActionType === "axeman attack" ||
           this.selectedActionType === "worker attack" ||
           this.selectedActionType === "worker mine" ||
+          this.selectedActionType === "archer shoot" ||
           this.selectedActionType === "tower shoot"
         ) {
           if (!this.user.resources) {
@@ -616,12 +635,16 @@ export default {
         "build spawn": () => buildAction("build spawn"),
         "move worker": () => moveOrShootOrMineAction("move worker"),
         "move axeman": () => moveOrShootOrMineAction("move axeman"),
+        "move archer": () => moveOrShootOrMineAction("move archer"),
+
         "worker mine": () => moveOrShootOrMineAction("worker mine"),
         "tower shoot": () => moveOrShootOrMineAction("tower shoot"),
         "axeman attack": () => moveOrShootOrMineAction("axeman attack"),
         "worker attack": () => moveOrShootOrMineAction("worker attack"),
+        "archer shoot": () => moveOrShootOrMineAction("archer shoot"),
         "spawn worker": () => moveOrShootOrMineAction("spawn worker"),
         "spawn axeman": () => moveOrShootOrMineAction("spawn axeman"),
+        "spawn archer": () => moveOrShootOrMineAction("spawn archer"),
       };
 
       if (Object.prototype.hasOwnProperty.call(actionsMap, action)) {
@@ -638,6 +661,10 @@ export default {
       }
       if (actionType === "spawn axeman" && this.user.resources.gold < 250) {
         this.addAlert("Not enough gold to spawn an axeman.");
+        return;
+      }
+      if (actionType === "spawn archer" && this.user.resources.gold < 300) {
+        this.addAlert("Not enough gold to spawn an archer.");
         return;
       }
       this.actionPopup = true;
@@ -679,6 +706,8 @@ export default {
         baseStyle.border = ownedByUser ? "2px solid green" : "2px solid red";
       }
 
+      if (cell.unit && cell.unit.owner === "game") delete baseStyle.border;
+
       if (cell === this.selectedCell) {
         baseStyle.border = "2px solid blue !important";
         baseStyle.filter = "brightness(1.05)";
@@ -694,6 +723,10 @@ export default {
         backgroundImageUrl = "/images/units/worker.png";
       } else if (cell.unit && cell.unit.unitType === "axeman") {
         backgroundImageUrl = "/images/units/axeman.png";
+      } else if (cell.unit && cell.unit.unitType === "archer") {
+        backgroundImageUrl = "/images/units/archer.png";
+      } else if (cell.unit && cell.unit.unitType === "deer") {
+        backgroundImageUrl = "/images/units/deer.png";
       } else if (
         cell.resource &&
         cell.resource.resourceType === "gold" &&
@@ -711,7 +744,7 @@ export default {
       } else if (cell.resource && cell.resource.resourceType === "stone") {
         backgroundImageUrl = "/images/resources/stone.png";
       } else if (cell.terrain === "plains") {
-        backgroundImageUrl = "/images/terrain/grass.png";
+        backgroundImageUrl = "/images/terrain/plains.png";
       } else if (cell.terrain === "tundra") {
         backgroundImageUrl = "/images/terrain/tundra.png";
       } else if (cell.terrain === "mountain") {
@@ -755,13 +788,20 @@ export default {
           return cell.resource && isInRangeOne;
         case "move worker":
         case "move axeman":
+        case "move archer":
           return noUnitBuildingResource && isInRangeOne;
         case "spawn worker":
         case "spawn axeman":
+        case "spawn archer":
           return noUnitBuildingResource && !cell.building && isInRangeOne;
         case "axeman attack":
         case "worker attack":
           return isInRangeOne && (cell.unit || cell.building);
+        case "archer shoot":
+          return (
+            this.isInRange(this.selectedCell, cell, 2) &&
+            (cell.unit || cell.building)
+          );
         case "tower shoot":
           return (
             this.isInRange(this.selectedCell, cell, 3) &&
@@ -1296,7 +1336,9 @@ export default {
   border: none;
   outline: none;
 }
-
+.actual-cell:hover {
+  filter: brightness(1.1);
+}
 .father {
   background-color: #1d1e22f1;
   overflow: hidden;

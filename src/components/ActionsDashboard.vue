@@ -161,6 +161,7 @@ h2 {
   bottom: -34px;
   right: -34px;
   border-radius: 50%;
+  cursor: pointer;
 }
 .curved-minimiser {
   position: absolute;
@@ -196,7 +197,6 @@ h2 {
   bottom: 0;
   right: 0;
   padding: 16px;
-
   background-color: #1d1e22;
   color: rgb(240, 240, 240);
   border-radius: 6px 0 0 0;

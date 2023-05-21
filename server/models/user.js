@@ -25,6 +25,14 @@ const UserSchema = new mongoose.Schema({
         type: Object,
         required: true,
     },
+    units: {
+        type: Array,
+        required:true,
+    },
+    buildings: {
+        type: Array,
+        required:true,
+    },
     identifier: {
         backgroundColor: String,
         shape: String,

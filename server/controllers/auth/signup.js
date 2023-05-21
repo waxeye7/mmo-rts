@@ -7,7 +7,7 @@ const signup = async (req, res) => {
 
     const user = await User.findOne({ username });
 
-    if (user) {
+    if (user || username === "game") {
       return res.status(400).json({ message: "username already exists." });
     }
 
@@ -45,7 +45,6 @@ const signup = async (req, res) => {
     });
     res.json({
       message: "User created successfully",
-      // token
     });
   } catch (error) {
     console.error("Error in sign up:", error);
