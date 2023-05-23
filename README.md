@@ -7,7 +7,7 @@ Immerse yourself in a world of strategy with our massively multiplayer online re
 - **Real-time updates** for a responsive and interactive game world.
 - Secure **user authentication and authorization**.
 - Construct strategic structures such as **Spawns** and **Towers**.
-- Train versatile units, including **Workers** and **Axemen**.
+- Train versatile units, including **Workers**, **Axemen**, and **Archers**.
 - Manage resources effectively, including **gold, wood, stone**, and **food**.
 - Explore and exploit various **biomes**, including plains, tundra, and mountains.
 - Engage in thrilling combat.
@@ -30,6 +30,7 @@ Players can train the following units:
 
 - **Worker**: Workers are the primary resource gatherers and can perform various tasks. They can be trained at the Spawn.
 - **Axeman**: A combat unit that provides an offensive edge to your army. Train them at the Spawn.
+- **Archer**: A ranged unit that excels in long-range attacks. Train them at the Spawn.
 
 ### Resources
 
@@ -47,14 +48,21 @@ Players can explore and exploit the following biomes:
 - **Tundra**: A source of unique resources.
 - **Mountain**: Rich in stone and other minerals.
 
+### Wildlife
+
+Players can encounter the following wildlife:
+
+- **Deer**: Found one per 10x10 chunk of cells. Hunt them for food.
+
 ### Actions
 
 Every turn, players have a limited number of actions, including:
 
 - Building structures
 - Training and moving units
-- Attacking with towers and Axemen
+- Attacking with towers, Axemen, and Archers
 - Gathering resources
+- Hunting wildlife for food
 
 ### Game Loop
 
@@ -67,6 +75,10 @@ The server runs a game loop that processes player actions and updates the game w
 5. Updates the next task timestamp
 
 The game loop scheduling is handled by the `node-cron` package.
+
+## Demo
+
+A live demo of the current state of the game's development is available at [https://mmo-rts.com](https://mmo-rts.com).
 
 ## Contributing
 
