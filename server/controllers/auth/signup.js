@@ -18,7 +18,7 @@ const signup = async (req, res) => {
       password: hashedPassword,
       actions: [],
       resources: {
-        gold: 1650,
+        gold: 200,
         wood: 0,
         stone: 0,
         food: 0,
@@ -34,14 +34,11 @@ const signup = async (req, res) => {
 
     await newUser.save();
 
-    const token = jwt.sign(
-      { id: newUser._id },
-      process.env.AUTH_SECRET_KEY
-    );
-    res.cookie('token', token, {
-      httpOnly: true, 
-      sameSite:'Strict',
-      maxAge: 7200000 // expires after 2 hours
+    const token = jwt.sign({ id: newUser._id }, process.env.AUTH_SECRET_KEY);
+    res.cookie("token", token, {
+      httpOnly: true,
+      sameSite: "Strict",
+      maxAge: 7200000, // expires after 2 hours
     });
     res.json({
       message: "User created successfully",
@@ -52,4 +49,4 @@ const signup = async (req, res) => {
   }
 };
 
-module.exports = signup
+module.exports = signup;

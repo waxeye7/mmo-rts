@@ -1,9 +1,17 @@
 <template>
   <div class="action-selector" v-show="actionType">
-    <h3 class="action-title">
+    <h3 v-if="actionType === 'Placing your first spawn - choose wisely'">
+      {{ actionType }}
+    </h3>
+
+    <h3 v-else class="action-title">
       Selecting Action Location for: {{ actionType }}
     </h3>
-    <button @click="$emit('cancel_target_selection')" class="cancel-button">
+    <button
+      v-if="actionType !== 'Placing your first spawn - choose wisely'"
+      @click="$emit('cancel_target_selection')"
+      class="cancel-button"
+    >
       Cancel Action
     </button>
   </div>

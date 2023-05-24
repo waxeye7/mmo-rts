@@ -143,8 +143,8 @@ export default {
   data() {
     return {
       bgImage: "",
-      connectedUsers: 0, // This would be updated via socket
-      version: "1.0.0", // This would be updated as needed
+      connectedUsers: null, // This would be updated via socket
+      version: "1.0.1", // This would be updated as needed
       selectedForm: null,
       loginForm: {
         username: "",
@@ -157,7 +157,7 @@ export default {
         identifier: {
           backgroundColor: "#000000",
           shape: "circle",
-          fillColor: "rgb(240, 240, 240)",
+          fillColor: "#ffffff",
         },
       },
     };
@@ -170,21 +170,6 @@ export default {
         "/images/misc/background/background3.png",
         "/images/misc/background/background4.png",
         "/images/misc/background/background5.png",
-        "/images/misc/background/background6.png",
-        "/images/misc/background/background7.png",
-        "/images/misc/background/background8.png",
-        "/images/misc/background/background9.png",
-        "/images/misc/background/background10.png",
-        "/images/misc/background/background11.png",
-        "/images/misc/background/background12.png",
-        "/images/misc/background/background13.png",
-        "/images/misc/background/background14.png",
-        "/images/misc/background/background15.png",
-        "/images/misc/background/background16.png",
-        "/images/misc/background/background17.png",
-        "/images/misc/background/background18.png",
-        "/images/misc/background/background19.png",
-        "/images/misc/background/background20.png",
       ];
       const randomIndex = Math.floor(Math.random() * images.length);
       const selectedImage = images[randomIndex];
@@ -247,8 +232,10 @@ export default {
       }
     },
     async signup() {
-      if(this.signupForm.username === "game") {
-        alert("Username cannot be 'game', please don't use a reserved username.");
+      if (this.signupForm.username === "game") {
+        alert(
+          "Username cannot be 'game', please don't use a reserved username."
+        );
         return;
       }
       if (this.signupForm.password !== this.signupForm.passwordConfirm) {
@@ -299,9 +286,17 @@ export default {
     }, 100); // Wait a bit for the page to load before starting the transition
   },
   created() {
-    this.$socket.on("user count", (numUsers) => {
+    // Define the socket event handler
+    const handleUserCount = (numUsers) => {
       this.connectedUsers = numUsers;
-    });
+    };
+
+    // Register the socket event handler
+    this.$socket.on("user count", handleUserCount);
+
+    // Emit an event to request the current count of connected users
+    this.$socket.emit("get user count");
+
     this.selectRandomImage();
   },
 };

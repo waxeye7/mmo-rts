@@ -6,7 +6,6 @@ const loadBoardState = async (db) => {
     if (!boardData) {
       // Create a new board and insert it into the database
       return createBoard(db);
-      
     } else {
       // Load the board from the database
       return boardData.state;

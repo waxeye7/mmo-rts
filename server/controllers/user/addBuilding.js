@@ -1,10 +1,10 @@
 const User = require("../../models/user");
 
-const addBuilding = async (buildingId, userId) => {
+const addBuilding = async (userId, buildingId) => {
   try {
     const user = await User.findById(userId);
     if (user) {
-      user.buildings.push(buildingId)
+      user.buildings.push(buildingId);
       await user.save();
     } else {
       return false;

@@ -83,11 +83,29 @@ import { io } from "socket.io-client";
         @cancel_target_selection="cancelTargetSelection"
       />
 
+      <CurrentAction
+        v-if="hasNothing"
+        :actionType="'Placing your first spawn - choose wisely'"
+        @cancel_target_selection="cancelTargetSelection"
+      />
+
       <div v-if="user" class="right-section">
         <h1 class="header-item logout-size">
           Logged in as: {{ user.username }}
         </h1>
         <h1 @click="logout" class="logout logout-size">Log Out</h1>
+      </div>
+    </div>
+
+    <div class="modal-spawn" v-if="confirmFirstSpawnLocationPopup">
+      <div class="modal-content-spawn">
+        <h3 class="message">Confirm spawn location</h3>
+        <div class="buttons">
+          <div class="modal-spawn-button" @click="confirmFirstSpawn">
+            Confirm
+          </div>
+          <div class="modal-spawn-button" @click="cancelFirstSpawn">Cancel</div>
+        </div>
       </div>
     </div>
 
@@ -429,6 +447,8 @@ import { io } from "socket.io-client";
 export default {
   data() {
     return {
+      confirmFirstSpawnLocationPopup: false,
+      hasNothing: false,
       alerts: [],
       chosen: false,
 
@@ -513,6 +533,53 @@ export default {
     },
   },
   methods: {
+    async confirmFirstSpawn() {
+      let cell = this.confirmFirstSpawnLocationPopup;
+      if (
+        cell &&
+        this.board[cell.y] &&
+        this.board[cell.x] &&
+        !cell.unit &&
+        !cell.building &&
+        !cell.resource
+      ) {
+        try {
+          const details = { cell }; // Replace with the desired cell position
+          const response = await fetch(
+            `${process.env.VUE_APP_API_URL}/users/placefirstspawn`,
+            {
+              method: "POST",
+              credentials: "include", // This is required to include the cookie in the request.
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify(details),
+            }
+          );
+
+          if (!response.ok) {
+            throw new Error(`HTTP error: ${response.status}`);
+          }
+        } catch (error) {
+          console.error("Error building first spawn:", error);
+        }
+        if (
+          this.user &&
+          !this.user.buildings.length &&
+          !this.user.units.length
+        ) {
+          this.hasNothing = true;
+        } else {
+          this.hasNothing = false;
+        }
+      } else {
+        this.addAlert("invalid location for spawn location");
+      }
+      this.confirmFirstSpawnLocationPopup = false;
+    },
+    cancelFirstSpawn() {
+      this.confirmFirstSpawnLocationPopup = false;
+    },
     addAlert(message) {
       const id = Date.now(); // Unique ID for the alert
       this.alerts.push({ id, message });
@@ -703,10 +770,11 @@ export default {
         const ownedByUser =
           (cell.unit && cell.unit.owner === this.user?.username) ||
           (cell.building && cell.building.owner === this.user?.username);
-        baseStyle.border = ownedByUser ? "2px solid green" : "2px solid red";
+        baseStyle.border = ownedByUser ? "1px solid green" : "1px solid red";
       }
 
-      if (cell.unit && cell.unit.owner === "game") delete baseStyle.border;
+      if ((cell.unit && cell.unit.owner === "game") || this.zoom <= 0.35)
+        baseStyle.border = "none";
 
       if (cell === this.selectedCell) {
         baseStyle.border = "2px solid blue !important";
@@ -751,7 +819,11 @@ export default {
         backgroundImageUrl = "/images/terrain/mountain.png";
       }
 
-      if (cell.unit && cell.unit.owner !== this.user?.username)
+      if (
+        cell.unit &&
+        cell.unit.owner !== this.user?.username &&
+        this.zoom <= 0.35
+      )
         baseStyle.backgroundColor = "red";
 
       if (backgroundImageUrl) {
@@ -845,6 +917,10 @@ export default {
         return;
       }
       if (this.selectedActionType) {
+        return;
+      }
+      if (this.hasNothing) {
+        this.confirmFirstSpawnLocationPopup = cell;
         return;
       }
       this.chosen = false;
@@ -1021,7 +1097,11 @@ export default {
     this.connectToSocket();
     // get signed in user's object
     await this.fetchUserById();
-
+    if (this.user && !this.user.buildings.length && !this.user.units.length) {
+      this.hasNothing = true;
+    } else {
+      this.hasNothing = false;
+    }
     // Set up the socket listeners
     this.$socket.on("updateBoard", (newBoard) => {
       console.log("Received updated board:", newBoard);
@@ -1037,6 +1117,16 @@ export default {
 
     this.$socket.on("updateUser", (updatedUser) => {
       this.user = updatedUser;
+      if (
+        this.user &&
+        !this.user.buildings &&
+        !this.user.units &&
+        this.user.resources.gold === 300
+      ) {
+        this.hasNothing = true;
+      } else {
+        this.hasNothing = false;
+      }
     });
 
     this.$socket.on("actionsReset", async () => {
@@ -1262,7 +1352,57 @@ export default {
   transform: scale(1.1);
   box-shadow: 0 2px 20px 0 rgba(0, 0, 0, 0.3);
 }
-
+.modal-spawn {
+  position: fixed;
+  z-index: 1000000000;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  overflow: auto;
+  background-color: rgba(0, 0, 0, 0.4);
+}
+.buttons {
+  display: flex;
+}
+.modal-content-spawn {
+  background-color: #1a1a1a;
+  border: 1px solid #333333;
+  border-radius: 8px;
+  box-shadow: 0px 2px 10px rgba(0, 0, 0, 0.2);
+  width: 80%;
+  max-width: 600px;
+  margin: 5% auto;
+  padding: 30px;
+  position: relative;
+  animation-name: animatetop;
+  animation-duration: 0.4s;
+  font-family: "Helvetica Neue", Arial, sans-serif;
+  color: white;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+}
+.modal-spawn-button {
+  border: 1px black solid;
+  width: 170px;
+  text-align: center;
+  padding: 14px 10px;
+  cursor: pointer;
+  margin: 0.5rem 0;
+  transition: transform 0.4s ease-out;
+  margin: 0 8px;
+}
+.modal-spawn-button:hover {
+  background-color: #000000;
+  transform: scale(1.075);
+}
+.modal-spawn-button:active {
+  background-color: #000000;
+  transform: scale(0.95);
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.15);
+}
 .modal {
   position: fixed;
   z-index: 1000000000;
@@ -1357,7 +1497,6 @@ export default {
   margin: 0;
   padding: 0;
   outline: none;
-  border: 2px black solid;
 }
 .alerts {
   position: fixed;
@@ -1388,5 +1527,25 @@ export default {
 
 .fade-leave-to {
   opacity: 0;
+}
+.first-spawn-popup {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background-color: rgba(0, 0, 0, 0.5); /* Semi-transparent black background */
+  z-index: 1231535362653151;
+}
+.first-spawn-modal-popup-content {
+  max-width: 400px;
+  padding: 20px;
+  background-color: #000;
+  color: #fff;
+  border-radius: 5px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
 }
 </style>
