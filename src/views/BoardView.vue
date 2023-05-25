@@ -5,6 +5,7 @@ import ActionsDashboard from "../components/ActionsDashboard.vue";
 import CurrentAction from "../components/CurrentAction.vue";
 import { v4 as uuidv4 } from "uuid";
 import { io } from "socket.io-client";
+import panZoom from "vue-panzoom";
 </script>
 
 <template>
@@ -264,16 +265,9 @@ import { io } from "socket.io-client";
     </div>
 
     <div class="outer-container">
-      <div
-        class="scroll-container"
-        @wheel="handleWheel"
-        @mousedown="startDrag"
-        @mouseup="endDrag"
-        @mouseleave="endDrag"
-        @mousemove="moveCamera"
-      >
+      <panZoom selector=".zoomable" id="canvasContainer">
         <div
-          class="board-container"
+          class="board-containe zoomable"
           :style="{
             transform: 'scale(' + zoom + ')',
             transformOrigin: originX + 'px ' + originY + 'px',
@@ -357,96 +351,101 @@ import { io } from "socket.io-client";
             </div>
           </div>
         </div>
-      </div>
-      <ActionsDashboard
-        v-if="user && user.username && user.actions && user.actions.length"
-        style="transition-delay: 100ms"
-        :actions="user.actions"
-        :board="board"
-        :getCellStyle="getCellStyle"
-        :timer="timer"
-        @cancel-action="cancelAction"
-      />
+      </panZoom>
     </div>
+    <ActionsDashboard
+      v-if="user && user.username && user.actions && user.actions.length"
+      style="transition-delay: 100ms"
+      :actions="user.actions"
+      :board="board"
+      :getCellStyle="getCellStyle"
+      :timer="timer"
+      @cancel-action="cancelAction"
+    />
+  </div>
 
-    <!-- Question mark button -->
-    <button class="help-button" @click="showModal">?</button>
+  <!-- Question mark button -->
+  <button class="help-button" @click="showModal">?</button>
 
-    <!-- Help modal -->
-    <div v-if="isModalVisible" class="modal" @click.self="hideModal">
-      <div class="modal-content">
-        <span @click="hideModal" class="close">&times;</span>
-        <h2>Welcome to Our MMO RTS Game!</h2>
-        <p>
-          This game is a thrilling multiplayer online real-time strategy game
-          where players build structures, train units, gather resources, and
-          engage in strategic battles in a shared game world. This guide
-          introduces you to the game's core mechanics, key concepts, and
-          strategic considerations to help you get started.
-        </p>
-        <h3>Game Mechanics</h3>
-        <h4>Structures and Units</h4>
-        <p>
-          Players can construct strategic structures such as Spawns and Towers,
-          and train versatile units including Workers and Axemen. Spawns are
-          used to train new units while Towers provide a defensive edge.
-        </p>
-        <h4>Resources and Biomes</h4>
-        <p>
-          Efficient resource management is key to success. Players must gather
-          and manage four types of resources - gold, wood, stone, and food.
-          Exploring and exploiting various biomes like plains, tundra, and
-          mountains can yield these resources.
-        </p>
-        <h4>Actions and Combat</h4>
-        <p>
-          Every turn, players have a limited number of actions such as building
-          structures, training and moving units, attacking enemies, and
-          gathering resources. Engage in thrilling combat with your trained
-          Axemen or use your Towers for defensive strategies.
-        </p>
-        <h3>Game Loop</h3>
-        <p>
-          The server runs a game loop that processes player actions and updates
-          the game world at customizable intervals. It processes all queued
-          actions, updates the game state and saves it to the database,
-          broadcasts the updated game state to all connected clients, resets the
-          actions queue, and updates the next task timestamp.
-        </p>
-        <h3>Strategic Considerations</h3>
-        <p>
-          It's important to strategize your moves considering the game mechanics
-          and the order of actions. The game processes action types in the
-          following order: construction, spawning, resource gathering,
-          conflicts, and then movement. This means that even if your worker is
-          killed on the same turn it gathers resources, the resource will still
-          be stockpiled before the worker is removed.
-        </p>
-        <p>
-          Please note that within each action type, the specific actions are
-          processed in a random order. This adds an element of unpredictability
-          and requires you to think on your feet.
-        </p>
-        <p>
-          Also, keeping track of your resource spending is crucial. As you
-          construct buildings, train units, and perform actions, your resources
-          deplete. Make sure to balance your spending and resource gathering to
-          ensure steady growth.
-        </p>
-        <p>
-          Make sure to plan your moves and use your limited actions per turn
-          wisely. We hope this guide helps you get started with our game. Dive
-          in, strategize, and conquer. Good luck and have fun!
-        </p>
-      </div>
+  <!-- Help modal -->
+  <div v-if="isModalVisible" class="modal" @click.self="hideModal">
+    <div class="modal-content">
+      <span @click="hideModal" class="close">&times;</span>
+      <h2>Welcome to Our MMO RTS Game!</h2>
+      <p>
+        This game is a thrilling multiplayer online real-time strategy game
+        where players build structures, train units, gather resources, and
+        engage in strategic battles in a shared game world. This guide
+        introduces you to the game's core mechanics, key concepts, and strategic
+        considerations to help you get started.
+      </p>
+      <h3>Game Mechanics</h3>
+      <h4>Structures and Units</h4>
+      <p>
+        Players can construct strategic structures such as Spawns and Towers,
+        and train versatile units including Workers and Axemen. Spawns are used
+        to train new units while Towers provide a defensive edge.
+      </p>
+      <h4>Resources and Biomes</h4>
+      <p>
+        Efficient resource management is key to success. Players must gather and
+        manage four types of resources - gold, wood, stone, and food. Exploring
+        and exploiting various biomes like plains, tundra, and mountains can
+        yield these resources.
+      </p>
+      <h4>Actions and Combat</h4>
+      <p>
+        Every turn, players have a limited number of actions such as building
+        structures, training and moving units, attacking enemies, and gathering
+        resources. Engage in thrilling combat with your trained Axemen or use
+        your Towers for defensive strategies.
+      </p>
+      <h3>Game Loop</h3>
+      <p>
+        The server runs a game loop that processes player actions and updates
+        the game world at customizable intervals. It processes all queued
+        actions, updates the game state and saves it to the database, broadcasts
+        the updated game state to all connected clients, resets the actions
+        queue, and updates the next task timestamp.
+      </p>
+      <h3>Strategic Considerations</h3>
+      <p>
+        It's important to strategize your moves considering the game mechanics
+        and the order of actions. The game processes action types in the
+        following order: construction, spawning, resource gathering, conflicts,
+        and then movement. This means that even if your worker is killed on the
+        same turn it gathers resources, the resource will still be stockpiled
+        before the worker is removed.
+      </p>
+      <p>
+        Please note that within each action type, the specific actions are
+        processed in a random order. This adds an element of unpredictability
+        and requires you to think on your feet.
+      </p>
+      <p>
+        Also, keeping track of your resource spending is crucial. As you
+        construct buildings, train units, and perform actions, your resources
+        deplete. Make sure to balance your spending and resource gathering to
+        ensure steady growth.
+      </p>
+      <p>
+        Make sure to plan your moves and use your limited actions per turn
+        wisely. We hope this guide helps you get started with our game. Dive in,
+        strategize, and conquer. Good luck and have fun!
+      </p>
     </div>
   </div>
 </template>
 
 <script>
 export default {
+  components: {
+    panZoom,
+  },
   data() {
     return {
+      enableZoomPan: true,
+
       confirmFirstSpawnLocationPopup: false,
       hasNothing: false,
       alerts: [],
@@ -1083,16 +1082,8 @@ export default {
     this.$socket.off("forceLogout");
     this.$socket.off("serverRestart");
     this.$socket.off("authentication_error");
+  },
 
-    this.$el
-      .querySelector(".scroll-container")
-      .removeEventListener("mouseleave", this.handleMouseUp);
-  },
-  mounted() {
-    this.$el
-      .querySelector(".scroll-container")
-      .addEventListener("mouseleave", this.handleMouseUp);
-  },
   async created() {
     this.connectToSocket();
     // get signed in user's object
