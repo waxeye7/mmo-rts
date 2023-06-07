@@ -21,7 +21,7 @@
           Pending Actions
         </h2>
         <div
-          v-for="(action, index) in actions"
+          v-for="(action, index) in reversedActions"
           :key="index"
           class="action-item"
         >
@@ -121,6 +121,11 @@ export default {
       expanded: this.timer > 1,
       timerGreaterThanOne: this.timer > 1,
     };
+  },
+  computed: {
+    reversedActions() {
+      return this.actions.slice().reverse();
+    },
   },
   watch: {
     timer(newVal) {

@@ -491,8 +491,8 @@ export default {
           gold: "/images/resources/gold.png",
           gold2: "/images/resources/gold2.png",
           wood: "/images/resources/wood.png",
-          stone: "images/resources/stone.png",
-          food: "images/resources/food.png",
+          stone: "/images/resources/stone.png",
+          food: "/images/resources/food.png",
           // ... other resource types
         },
       },

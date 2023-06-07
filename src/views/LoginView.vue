@@ -19,8 +19,20 @@ import { io } from "socket.io-client";
           Login
         </button>
         <button class="decider-button" @click="selectForm('signup')">
-          Signup
+          Sign up
         </button>
+      </div>
+
+      <div class="socials">
+        <a href="https://github.com/waxeye7/mmo-rts" target="_blank">
+          <img src="/images/icons/github-icon.svg" alt="GitHub" />
+        </a>
+      </div>
+
+      <div class="socials discord">
+        <a href="https://discord.gg/ptUjrfSRPq" target="_blank">
+          <img src="/images/icons/discord-icon.svg" alt="Discord" />
+        </a>
       </div>
 
       <div v-if="selectedForm === 'login'" class="form-container">
@@ -138,6 +150,7 @@ import { io } from "socket.io-client";
     </div>
   </div>
 </template>
+
 <script>
 export default {
   data() {
@@ -277,17 +290,18 @@ export default {
       }
     },
   },
-  beforeUnmount() {
+  async beforeUnmount() {
     this.$socket.off("user count");
   },
+
   mounted() {
     setTimeout(() => {
       document.getElementById("app").classList.remove("blur");
     }, 100); // Wait a bit for the page to load before starting the transition
-  },
-  created() {
+
     // Define the socket event handler
     const handleUserCount = (numUsers) => {
+      console.log("updating number of users");
       this.connectedUsers = numUsers;
     };
 
@@ -364,7 +378,7 @@ export default {
   }
 }
 #app {
-  background-color: #1d1e22e8;
+  background-color: #1d1e22de;
   color: rgb(240, 240, 240);
   font-family: Arial, sans-serif;
   margin: 0;
@@ -461,5 +475,66 @@ button:disabled {
 }
 .title {
   font-size: clamp(20px, 5vw, 30px);
+}
+.discord {
+  left: 72px !important;
+}
+.socials {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  margin: 10px;
+  opacity: 0.8;
+  transition: transform 0.2s ease-in-out;
+}
+.socials a img {
+  height: 64px;
+  width: 64px;
+}
+
+.socials:hover {
+  transform: scale(1.05);
+  opacity: 1;
+}
+@media (max-width: 480px) {
+  .title {
+    margin-bottom: 0.5rem;
+    font-size: 24px;
+  }
+
+  .connected-users,
+  .version-number {
+    font-size: 12px;
+  }
+
+  .main {
+    padding: 1rem;
+  }
+
+  .decider-button {
+    font-size: 16px;
+    padding: 0.8em 2.4em;
+    margin: 0.5em 0;
+  }
+
+  .form-container {
+    max-width: 300px;
+    margin: 0 auto;
+  }
+
+  .form-container h1 {
+    font-size: 20px;
+    margin-bottom: 0.5rem;
+  }
+
+  form label,
+  form input {
+    margin-bottom: 0.5rem;
+    width: 100%;
+  }
+
+  button {
+    width: 100%;
+  }
 }
 </style>
