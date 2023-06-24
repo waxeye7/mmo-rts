@@ -29,6 +29,7 @@
     "node-cron": "^3.0.2",
     "socket.io": "^4.6.1",
     "socket.io-client": "^4.6.1",
+    "three": "^0.153.0",
     "uuid": "^9.0.0",
     "vue": "^3.2.13",
     "vue-router": "^4.1.6"
@@ -37,6 +38,7 @@
     "@babel/core": "^7.21.4",
     "@babel/eslint-parser": "^7.12.16",
     "@babel/preset-env": "^7.21.4",
+    "@types/three": "^0.152.1",
     "@vue/cli-plugin-babel": "~5.0.0",
     "@vue/cli-plugin-eslint": "~5.0.0",
     "@vue/cli-service": "~5.0.0",

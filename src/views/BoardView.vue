@@ -1,6 +1,9 @@
 <script setup>
+import * as THREE from "three";
+import { OrbitControls } from "three/examples/jsm/controls/OrbitControls";
+
 import UserIdentifier from "../components/UserIdentifier.vue";
-import ActionBubble from "../components/ActionBubble.vue";
+// import ActionBubble from "../components/ActionBubble.vue";
 import ActionsDashboard from "../components/ActionsDashboard.vue";
 import CurrentAction from "../components/CurrentAction.vue";
 import { v4 as uuidv4 } from "uuid";
@@ -264,100 +267,7 @@ import { io } from "socket.io-client";
     </div>
 
     <div class="outer-container">
-      <div
-        class="scroll-container"
-        @wheel="handleWheel"
-        @mousedown="startDrag"
-        @mouseup="endDrag"
-        @mouseleave="endDrag"
-        @mousemove="moveCamera"
-      >
-        <div
-          class="board-container"
-          :style="{
-            transform: 'scale(' + zoom + ')',
-            transformOrigin: originX + 'px ' + originY + 'px',
-          }"
-        >
-          <div v-for="(row, y) in board" :key="y" style="display: flex">
-            <div v-for="(cell, x) in row" :key="x">
-              <div class="cell-wrapper">
-                <button
-                  class="actual-cell"
-                  @click="
-                    if (
-                      !selectedCell ||
-                      selectedCell.x !== cell.x ||
-                      selectedCell.y !== cell.y
-                    ) {
-                      actionPopup ? selectTargetCell(cell) : selectCell(cell);
-                    } else if (!actionPopup) {
-                      selectedCell = null;
-                    } else if (actionPopup) addAlert('cannot target itself');
-                  "
-                  :style="getCellStyle(cell)"
-                >
-                  <UserIdentifier
-                    v-if="
-                      cell.unit ||
-                      (cell.building &&
-                        userIdentifierInfo[
-                          (cell.unit && cell.unit.owner) ||
-                            (cell.building && cell.building.owner)
-                        ])
-                    "
-                    :backgroundColor="
-                      userIdentifierInfo &&
-                      userIdentifierInfo[
-                        (cell.unit && cell.unit.owner) ||
-                          (cell.building && cell.building.owner)
-                      ] &&
-                      userIdentifierInfo[
-                        (cell.unit && cell.unit.owner) ||
-                          (cell.building && cell.building.owner)
-                      ].backgroundColor
-                    "
-                    :shape="
-                      userIdentifierInfo &&
-                      userIdentifierInfo[
-                        (cell.unit && cell.unit.owner) ||
-                          (cell.building && cell.building.owner)
-                      ] &&
-                      userIdentifierInfo[
-                        (cell.unit && cell.unit.owner) ||
-                          (cell.building && cell.building.owner)
-                      ].shape
-                    "
-                    :fillColor="
-                      userIdentifierInfo &&
-                      userIdentifierInfo[
-                        (cell.unit && cell.unit.owner) ||
-                          (cell.building && cell.building.owner)
-                      ] &&
-                      userIdentifierInfo[
-                        (cell.unit && cell.unit.owner) ||
-                          (cell.building && cell.building.owner)
-                      ].fillColor
-                    "
-                    :zoom="zoom"
-                  />
-                </button>
-                <ActionBubble
-                  v-if="
-                    selectedCell && selectedCell.x === x && selectedCell.y === y
-                  "
-                  :cell="cell"
-                  :user="user"
-                  :chosen="chosen"
-                  :zoom="zoom"
-                  @action="handleAction"
-                  @cancel_target_selection="cancelTargetSelection"
-                />
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
+      <div ref="container"></div>
       <ActionsDashboard
         v-if="user && user.username && user.actions && user.actions.length"
         style="transition-delay: 100ms"
@@ -447,6 +357,14 @@ import { io } from "socket.io-client";
 export default {
   data() {
     return {
+      boardGroup: null,
+      scene: null,
+      camera: null,
+      renderer: null,
+      cube: null,
+      controls: null,
+      draughts: null,
+
       confirmFirstSpawnLocationPopup: false,
       hasNothing: false,
       alerts: [],
@@ -533,6 +451,143 @@ export default {
     },
   },
   methods: {
+    init() {
+      const container = this.$refs.container;
+      const scene = new THREE.Scene();
+      const camera = new THREE.PerspectiveCamera(
+        75,
+        window.innerWidth / window.innerHeight,
+        0.1,
+        1000
+      );
+
+      const renderer = new THREE.WebGLRenderer();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      container.appendChild(renderer.domElement);
+
+      const square = new THREE.BoxGeometry(1, 0.01, 1);
+
+      const board = new THREE.Group();
+      for (let x = 0; x < this.board.length; x++) {
+        for (let z = 0; z < this.board.length; z++) {
+          let cube = new THREE.Mesh(square);
+
+          // Apply different materials and textures based on cell properties
+          const cell = this.board[z][x];
+
+          let material;
+          let textureUrl = "";
+
+          if (cell.building) {
+            // Apply material and texture based on building type
+            if (cell.building.structureType === "structureSpawn") {
+              textureUrl = "/images/buildings/structureSpawn.png";
+            } else if (cell.building.structureType === "structureTower") {
+              textureUrl = "/images/buildings/structureTower.png";
+            }
+
+            if (textureUrl) {
+              const texture = new THREE.TextureLoader().load(textureUrl);
+              material = new THREE.MeshBasicMaterial({ map: texture });
+            }
+          } else if (cell.unit) {
+            // Apply material and texture based on unit type
+            if (cell.unit.unitType === "worker") {
+              textureUrl = "/images/units/worker.png";
+            } else if (cell.unit.unitType === "axeman") {
+              textureUrl = "/images/units/axeman.png";
+            } else if (cell.unit.unitType === "archer") {
+              textureUrl = "/images/units/archer.png";
+            } else if (cell.unit.unitType === "deer") {
+              textureUrl = "/images/units/deer.png";
+            }
+
+            if (textureUrl) {
+              const texture = new THREE.TextureLoader().load(textureUrl);
+              material = new THREE.MeshBasicMaterial({ map: texture });
+            }
+          } else if (cell.resource) {
+            // Apply material and texture based on resource type
+            if (
+              cell.resource.resourceType === "gold" &&
+              cell.terrain === "mountain"
+            ) {
+              textureUrl = "/images/resources/gold.png";
+            } else if (
+              cell.resource.resourceType === "gold" &&
+              cell.terrain === "plains"
+            ) {
+              textureUrl = "/images/resources/gold2.png";
+            } else if (cell.resource.resourceType === "wood") {
+              textureUrl = "/images/resources/wood.png";
+            } else if (cell.resource.resourceType === "stone") {
+              textureUrl = "/images/resources/stone.png";
+            }
+
+            if (textureUrl) {
+              const texture = new THREE.TextureLoader().load(textureUrl);
+              material = new THREE.MeshBasicMaterial({ map: texture });
+            }
+          } else if (cell.terrain === "plains") {
+            textureUrl = "/images/terrain/plains.png";
+          } else if (cell.terrain === "tundra") {
+            textureUrl = "/images/terrain/tundra.png";
+          } else if (cell.terrain === "mountain") {
+            textureUrl = "/images/terrain/mountain.png";
+          }
+
+          if (textureUrl) {
+            const texture = new THREE.TextureLoader().load(textureUrl);
+            material = new THREE.MeshBasicMaterial({ map: texture });
+          } else {
+            material = new THREE.MeshBasicMaterial({ color: 0x5a5a5a });
+          }
+
+          cube.material = material;
+
+          cube.position.set(x, 0, z);
+          board.add(cube);
+        }
+      }
+
+      scene.add(board);
+
+      camera.position.y = 30;
+      camera.position.z = 0;
+      camera.position.x = 0;
+
+      const controls = new OrbitControls(camera, renderer.domElement);
+
+      controls.target.set(0, 10, 0);
+      controls.enableRotate = false;
+      controls.enablePan = true;
+      controls.maxPolarAngle = Math.PI / 2;
+
+      controls.enableDamping = true;
+
+      const animate = () => {
+        controls.update();
+        renderer.render(scene, camera);
+        window.requestAnimationFrame(animate);
+      };
+
+      animate();
+    },
+    onWindowResize() {
+      const container = this.$refs.container;
+      const camera = this.camera;
+
+      if (container && camera) {
+        camera.aspect = container.offsetWidth / container.offsetHeight;
+        camera.updateProjectionMatrix();
+
+        const renderer = this.renderer;
+        if (renderer) {
+          renderer.setSize(container.offsetWidth, container.offsetHeight);
+        }
+      }
+    },
+
     async confirmFirstSpawn() {
       let cell = this.confirmFirstSpawnLocationPopup;
       if (
@@ -926,73 +981,6 @@ export default {
       this.chosen = false;
       this.selectedCell = cell;
     },
-    handleWheel(event) {
-      event.preventDefault();
-
-      const container = this.$el.querySelector(".scroll-container");
-      const boardContainer = this.$el.querySelector(".board-container");
-      const rect = container.getBoundingClientRect();
-      const x = event.clientX - rect.left; // x position within the element.
-      const y = event.clientY - rect.top; // y position within the element.
-
-      const oldZoom = this.zoom;
-
-      if (event.deltaY < 0) {
-        this.zoom = Math.min(this.zoom + 0.075, 3); // Limit max zoom level (e.g., 3)
-      } else {
-        if (this.zoom <= 0.3) return;
-        this.zoom = Math.max(this.zoom - 0.075, 0.3); // Limit min zoom level (e.g., 0.35)
-      }
-
-      const newZoom = this.zoom;
-
-      // The following calculations essentially figure out the new "center"
-      // based on the mouse position and adjust the scroll position accordingly.
-      const mousePointToCenterX = x - container.scrollLeft;
-      const mousePointToCenterY = y - container.scrollTop;
-      const newX =
-        mousePointToCenterX * (newZoom / oldZoom) - mousePointToCenterX;
-      const newY =
-        mousePointToCenterY * (newZoom / oldZoom) - mousePointToCenterY;
-
-      container.scrollLeft += newX;
-      container.scrollTop += newY;
-
-      // Apply the scale to the board container
-      boardContainer.style.transform = `scale(${newZoom})`;
-    },
-    startDrag(event) {
-      event.preventDefault();
-      this.dragging = true;
-      this.dragStartX = event.clientX;
-      this.dragStartY = event.clientY;
-      // Attach mousemove event handler
-      this.$el.addEventListener("mousemove", this.mouseMoveHandler);
-    },
-    endDrag() {
-      this.dragging = false;
-      this.$el.removeEventListener("mousemove", this.mouseMoveHandler);
-      setTimeout(() => {
-        this.isDragging = false;
-      }, 50);
-    },
-    mouseMoveHandler() {
-      this.isDragging = true;
-    },
-    moveCamera(event) {
-      if (!this.dragging) return;
-
-      const container = this.$el.querySelector(".scroll-container");
-      const deltaX = event.clientX - this.dragStartX;
-      const deltaY = event.clientY - this.dragStartY;
-
-      container.scrollLeft -= deltaX;
-      container.scrollTop -= deltaY;
-
-      this.dragStartX = event.clientX;
-      this.dragStartY = event.clientY;
-    },
-
     async logout() {
       try {
         const response = await fetch(
@@ -1074,6 +1062,7 @@ export default {
     },
   },
   beforeUnmount() {
+    window.removeEventListener("resize", this.onWindowResize);
     // Remove the socket listeners
     this.$socket.off("updateBoard");
     this.$socket.off("updateTimer");
@@ -1083,16 +1072,8 @@ export default {
     this.$socket.off("forceLogout");
     this.$socket.off("serverRestart");
     this.$socket.off("authentication_error");
-
-    this.$el
-      .querySelector(".scroll-container")
-      .removeEventListener("mouseleave", this.handleMouseUp);
   },
-  mounted() {
-    this.$el
-      .querySelector(".scroll-container")
-      .addEventListener("mouseleave", this.handleMouseUp);
-  },
+  mounted() {},
   async created() {
     this.connectToSocket();
     // get signed in user's object
@@ -1109,6 +1090,9 @@ export default {
       this.selectedCell = null;
       this.actionPopup = false;
       this.board = newBoard;
+
+      this.init();
+      window.addEventListener("resize", this.onWindowResize);
     });
 
     this.$socket.on("updateTimer", (timerValue) => {
@@ -1165,17 +1149,6 @@ export default {
 
     this.getAllUserIdentifiers();
   },
-  // watch: {
-  //   board: {
-  //     handler(newBoard) {
-  //       this.board = newBoard;
-  //       this.$nextTick(() => {
-  //         this.$forceUpdate();
-  //       });
-  //     },
-  //     deep: true,
-  //   },
-  // },
 };
 </script>
 
@@ -1200,6 +1173,7 @@ export default {
   background-color: #1d1e22;
   max-height: 50px;
   position: relative;
+  cursor: default;
 }
 
 .left-section,
@@ -1547,5 +1521,11 @@ export default {
   color: #fff;
   border-radius: 5px;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+#container {
+  width: 100%;
+  height: 100vh;
+  overflow: hidden;
+  position: relative;
 }
 </style>
