@@ -929,11 +929,7 @@ export default {
     handleWheel(event) {
       event.preventDefault();
 
-      const container = this.$el.querySelector(".scroll-container");
       const boardContainer = this.$el.querySelector(".board-container");
-      const rect = container.getBoundingClientRect();
-      const x = event.clientX - rect.left; // x position within the element.
-      const y = event.clientY - rect.top; // y position within the element.
 
       const oldZoom = this.zoom;
 
@@ -946,17 +942,19 @@ export default {
 
       const newZoom = this.zoom;
 
-      // The following calculations essentially figure out the new "center"
-      // based on the mouse position and adjust the scroll position accordingly.
-      const mousePointToCenterX = x - container.scrollLeft;
-      const mousePointToCenterY = y - container.scrollTop;
+      // Determine the center of the container
+      const centerX = boardContainer.scrollWidth / 2;
+      const centerY = boardContainer.scrollHeight / 2;
+
+      const mousePointToCenterX = centerX - boardContainer.scrollLeft;
+      const mousePointToCenterY = centerY - boardContainer.scrollTop;
       const newX =
         mousePointToCenterX * (newZoom / oldZoom) - mousePointToCenterX;
       const newY =
         mousePointToCenterY * (newZoom / oldZoom) - mousePointToCenterY;
 
-      container.scrollLeft += newX;
-      container.scrollTop += newY;
+      boardContainer.scrollLeft += newX;
+      boardContainer.scrollTop += newY;
 
       // Apply the scale to the board container
       boardContainer.style.transform = `scale(${newZoom})`;
