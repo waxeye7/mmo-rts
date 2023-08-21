@@ -447,6 +447,10 @@ import { io } from "socket.io-client";
 export default {
   data() {
     return {
+      translatedText: {},
+      selectedLanguage: "en", // default language
+      audioFile: null,
+
       confirmFirstSpawnLocationPopup: false,
       hasNothing: false,
       alerts: [],
@@ -533,6 +537,26 @@ export default {
     },
   },
   methods: {
+    async translateText() {
+      const response = await fetch(
+        `${process.env.VUE_APP_API_URL}/translate?lang=${this.selectedLanguage}`,
+        {
+          method: "GET",
+          credentials: "include", // This is required to include the cookie in the request.
+          headers: {
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(`HTTP error: ${response.status}`);
+      }
+
+      const data = await response.json();
+      this.translatedText = data;
+    },
+
     async confirmFirstSpawn() {
       let cell = this.confirmFirstSpawnLocationPopup;
       if (
@@ -1423,7 +1447,7 @@ export default {
   padding: 30px;
   position: relative;
   animation-name: animatetop;
-  animation-duration: 0.4s;
+  animation-duration: 0.3s;
   font-family: "Helvetica Neue", Arial, sans-serif;
 }
 

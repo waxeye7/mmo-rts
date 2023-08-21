@@ -215,10 +215,6 @@ app.use("/users", UsersRoute);
 const AuthRoute = require("./routes/auth.js");
 app.use("/auth", AuthRoute);
 
-// Voiceover routes
-const VoiceoverRoute = require("./routes/voiceovers.js");
-app.use("/voiceover", VoiceoverRoute);
-
 const handleAction = async (socket, action, userId) => {
   console.log("Received action:", action);
 

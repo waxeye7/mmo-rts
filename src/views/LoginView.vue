@@ -27,9 +27,7 @@ import { io } from "socket.io-client";
         <a href="https://github.com/waxeye7/mmo-rts" target="_blank">
           <img src="/images/icons/github-icon.svg" alt="GitHub" />
         </a>
-      </div>
 
-      <div class="socials discord">
         <a href="https://discord.gg/ptUjrfSRPq" target="_blank">
           <img src="/images/icons/discord-icon.svg" alt="Discord" />
         </a>
@@ -181,8 +179,11 @@ export default {
         "/images/misc/background/background.png",
         "/images/misc/background/background2.png",
         "/images/misc/background/background3.png",
-        "/images/misc/background/background4.png",
         "/images/misc/background/background5.png",
+        "/images/misc/background/background6.png",
+        "/images/misc/background/background7.png",
+        "/images/misc/background/background9.png",
+        "/images/misc/background/background11.png",
       ];
       const randomIndex = Math.floor(Math.random() * images.length);
       const selectedImage = images[randomIndex];
@@ -350,13 +351,14 @@ export default {
   height: 100%;
   background-image: var(--bg-image);
   background-repeat: no-repeat;
-  background-position: 0% 50%; /* start position of the image */
+  background-position: 0% 0%; /* position the image at the top */
+
   background-size: cover;
   -webkit-background-size: cover;
   -moz-background-size: cover;
   -o-background-size: cover;
   filter: blur(50px);
-  animation: blurFade 6s forwards, backgroundPan 60s infinite linear;
+  animation: blurFade 3s forwards, backgroundPan 60s infinite linear;
   z-index: -1;
 }
 
@@ -378,7 +380,7 @@ export default {
   }
 }
 #app {
-  background-color: #1d1e22de;
+  background-color: #1d1e229a;
   color: rgb(240, 240, 240);
   font-family: Arial, sans-serif;
   margin: 0;
@@ -475,27 +477,30 @@ button:disabled {
 }
 .title {
   font-size: clamp(20px, 5vw, 30px);
+  font-weight: 400;
 }
-.discord {
-  left: 72px !important;
-}
+
 .socials {
+  display: flex;
   position: absolute;
   bottom: 0;
   left: 0;
   margin: 10px;
-  opacity: 0.8;
-  transition: transform 0.2s ease-in-out;
 }
+
 .socials a img {
   height: 64px;
   width: 64px;
+  transition: transform 0.2s ease-in-out;
+  opacity: 0.75;
+  margin-left: 4px;
+  margin-right: 4px;
 }
-
-.socials:hover {
-  transform: scale(1.05);
+.socials a img:hover {
+  transform: scale(1.1);
   opacity: 1;
 }
+
 @media (max-width: 480px) {
   .title {
     margin-bottom: 0.5rem;
