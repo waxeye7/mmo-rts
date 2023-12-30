@@ -901,7 +901,7 @@ broadcastRemainingTime();
 //   }
 // }, 1000);
 
-cron.schedule("*/20 * * * * *", async () => {
+cron.schedule("0 2 */2 * *", async () => {
   // cron.schedule('0 */12 * * *', async () => {
   board = await loadBoardState(db);
   await processActions();
@@ -919,4 +919,21 @@ cron.schedule("*/20 * * * * *", async () => {
   nextTaskTimestamp = newTimestamp;
   // Broadcast the remaining time
   broadcastRemainingTime();
+});
+
+cron.schedule("0 2 * * *", async () => {
+  try {
+    console.log("Database reset scheduled task started");
+
+    // Drop the existing database
+    await mongoose.connection.db.dropDatabase();
+
+    // Load the initial state of the board after the reset
+    board = await loadBoardState(db);
+    nextTaskTimestamp = await loadNextTaskTimestamp();
+
+    console.log("Database reset completed successfully");
+  } catch (error) {
+    console.error("Error during database reset:", error);
+  }
 });
