@@ -13,7 +13,7 @@
     "@fortawesome/fontawesome-svg-core": "^6.4.0",
     "@fortawesome/free-solid-svg-icons": "^6.4.0",
     "@fortawesome/vue-fontawesome": "^3.0.3",
-    "@google-cloud/text-to-speech": "^4.2.2",
+    "@google-cloud/text-to-speech": "^5.0.0",
     "@vitalets/google-translate-api": "^9.2.0",
     "bcrypt": "^5.1.0",
     "body-parse": "^0.1.0",
