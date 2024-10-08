@@ -17,7 +17,7 @@
     "@vitalets/google-translate-api": "^9.2.0",
     "bcrypt": "^5.1.0",
     "body-parse": "^0.1.0",
-    "cookie": "^0.5.0",
+    "cookie": "^0.7.0",
     "cookie-parser": "^1.4.6",
     "core-js": "^3.8.3",
     "dotenv": "^16.0.3",
