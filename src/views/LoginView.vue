@@ -380,9 +380,9 @@ export default {
   }
 }
 #app {
-  background-color: #1d1e229a;
-  color: rgb(240, 240, 240);
-  font-family: Arial, sans-serif;
+  background-color: rgba(26, 21, 13, 0.72);
+  color: var(--parchment);
+  font-family: var(--font-ui);
   margin: 0;
   padding: 0;
 }
@@ -391,10 +391,10 @@ header {
   display: flex;
   padding: 0 2rem;
   align-items: center;
-  background-color: #1d1e22;
-  color: rgb(240, 240, 240);
+  background-color: var(--ink);
+  color: var(--parchment);
   height: 70px;
-  box-shadow: 0 2px 4px 0 rgba(0, 0, 0, 0.1);
+  border-bottom: 1px solid var(--line);
 }
 header * {
   flex: 1;
@@ -406,13 +406,14 @@ h1 {
 
 .version-number {
   font-size: clamp(12px, 3vw, 16px);
-
   text-align: end;
+  color: var(--parchment-dim);
 }
 
 .connected-users {
   font-size: clamp(12px, 3vw, 16px);
   text-align: center;
+  color: var(--parchment-dim);
 }
 
 .main {
@@ -423,29 +424,62 @@ h1 {
 }
 
 .decider-button {
+  font-family: var(--font-display);
   font-size: clamp(16px, 2.4vw, 24px);
-  background-color: #1d1e22;
-  border: 1px solid rgb(240, 240, 240);
-  color: rgb(240, 240, 240);
-  padding: 1.2em 3em;
+  background-color: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  color: var(--parchment);
+  padding: 1em 2.6em;
   margin: 0.5em;
   cursor: pointer;
-  transition: background-color 0.3s, color 0.3s;
+  box-shadow: var(--shadow);
+  transition: border-color 0.2s ease, background-color 0.2s ease, transform 0.2s ease;
 }
 
 .decider-button:hover {
-  background-color: #686868;
-  color: rgb(240, 240, 240);
+  background-color: var(--panel-soft);
+  border-color: var(--gold);
+  transform: translateY(-1px);
 }
 
 .form-container {
-  background-color: #1d1e22;
-  color: rgb(240, 240, 240);
-  padding: 1em;
+  background-color: var(--panel);
+  color: var(--parchment);
+  padding: 1.4em;
   margin-top: 1em;
-  width: 300px;
-  border: 1px solid rgb(240, 240, 240);
-  border-radius: 5px;
+  width: 320px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+}
+
+.form-container h1 {
+  font-size: 1.5em;
+  margin-bottom: 0.6em;
+}
+
+.form-container label {
+  color: var(--parchment-dim);
+  font-size: 0.92em;
+}
+
+.form-container input[type="text"],
+.form-container input[type="password"],
+.form-container select {
+  background-color: var(--ink);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  color: var(--parchment);
+  font-family: var(--font-ui);
+  font-size: 1em;
+  padding: 0.5em 0.65em;
+}
+
+.form-container input:focus,
+.form-container select:focus {
+  border-color: var(--gold);
+  outline: none;
 }
 
 form {
@@ -460,24 +494,44 @@ input {
 
 button {
   cursor: pointer;
-  background-color: rgb(240, 240, 240);
-  color: #1d1e22;
-  padding: 0.5em;
+  background-color: var(--gold);
+  border-radius: var(--radius-sm);
+  color: #241b0d;
+  font-family: var(--font-ui);
+  font-weight: 700;
+  font-size: 1em;
+  padding: 0.6em;
   margin-top: 1em;
+  transition: filter 0.15s ease;
 }
 
 button:hover {
-  background-color: #686868;
-  color: rgb(240, 240, 240);
+  filter: brightness(1.08);
 }
 
 button:disabled {
-  background-color: #999;
-  color: #ccc;
+  background-color: var(--panel-soft);
+  color: var(--parchment-dim);
+}
+
+/* "Back" sits directly under .form-container (outside the form) — keep it
+   quiet so the gold submit stays the single accent. */
+.form-container > button {
+  background-color: transparent;
+  border: 1px solid var(--line);
+  color: var(--parchment-dim);
+}
+
+.form-container > button:hover {
+  filter: none;
+  border-color: var(--gold);
+  color: var(--parchment);
 }
 .title {
-  font-size: clamp(20px, 5vw, 30px);
-  font-weight: 400;
+  font-family: var(--font-display);
+  font-size: clamp(22px, 5vw, 32px);
+  font-weight: 700;
+  color: var(--parchment);
 }
 
 .socials {

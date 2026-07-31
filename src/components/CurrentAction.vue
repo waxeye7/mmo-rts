@@ -45,35 +45,41 @@ export default {
   top: 70px; /* adjust this value based on your header height */
   left: 50%;
   transform: translateX(-50%);
-  background-image: linear-gradient(#1d1e22, #101113);
-  padding: 20px;
-  border-radius: 0 0 10px 10px;
+  background-color: var(--panel);
+  border: 1px solid var(--line);
+  border-top: none;
+  padding: 18px 20px;
+  border-radius: 0 0 var(--radius) var(--radius);
+  box-shadow: var(--shadow);
   width: 80%;
   max-width: 500px;
   text-align: center;
-  color: rgb(240, 240, 240);
+  color: var(--parchment);
   z-index: 999999999;
 }
 
 .action-title {
-  font-size: 18px;
-  font-weight: 600;
+  font-family: var(--font-display);
+  font-size: 19px;
+  font-weight: 700;
   margin-bottom: 15px;
-  text-transform: uppercase;
 }
 
 .cancel-button {
-  padding: 10px 20px;
-  background-color: #e74c3c;
-  color: rgb(240, 240, 240);
-  border: none;
-  border-radius: 5px;
-  font-size: 16px;
+  padding: 9px 20px;
+  background-color: transparent;
+  color: var(--parchment-dim);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-ui);
+  font-size: 15px;
+  font-weight: 700;
   cursor: pointer;
-  transition: background-color 0.3s;
+  transition: border-color 0.2s, color 0.2s;
 }
 
 .cancel-button:hover {
-  background-color: #c0392b;
+  border-color: var(--rust);
+  color: var(--parchment);
 }
 </style>

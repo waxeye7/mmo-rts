@@ -1,3 +1,48 @@
+/* Warm "tavern ledger" chrome — palette pulled from the board art:
+   mossy plains, painted icons, gold coins. One accent, soft edges. */
+:root {
+  --ink: #211b12;            /* header bars, deepest surface */
+  --panel: #2b241a;          /* raised panels */
+  --panel-soft: #362d20;     /* hover surface */
+  --parchment: #ece0c8;      /* primary text */
+  --parchment-dim: #b6a789;  /* secondary text */
+  --line: rgba(236, 224, 200, 0.16);
+  --gold: #d9a441;           /* the one accent */
+  --gold-soft: rgba(217, 164, 65, 0.14);
+  --rust: #b85c4a;           /* alerts */
+  --radius: 10px;
+  --radius-sm: 7px;
+  --shadow: 0 10px 30px rgba(12, 8, 3, 0.45);
+  --font-display: "Alegreya", Georgia, serif;
+  --font-ui: "Karla", "Segoe UI", Arial, sans-serif;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  font-family: var(--font-ui);
+  color: var(--parchment);
+  background-color: var(--ink);
+}
+
+h1, h2, h3, h4 {
+  font-family: var(--font-display);
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+
+:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
 .flex {
   display: flex;
 }
@@ -11,20 +56,23 @@
   pointer-events: none;
 }
 .button {
-  border: 1px black solid;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background-color: var(--panel);
+  color: var(--parchment);
   width: 170px;
   text-align: center;
-  padding: 6px 10px;
+  padding: 8px 10px;
   cursor: pointer;
   margin: 0.5rem 0;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
 }
 .button:hover {
-  background-color: #f1f1f1;
+  background-color: var(--panel-soft);
+  border-color: var(--gold);
 }
 .button:active {
-  background-color: #f1f1f1;
-  transform: scale(0.95);
-  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.15);
+  transform: scale(0.97);
 }
 button {
   padding: 0;

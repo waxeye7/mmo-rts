@@ -179,9 +179,9 @@ export default {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  background: #000000; /* Black background */
-  border: 1px solid #cccccc;
-  border-radius: 10px;
+  background: var(--ink);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
   width: 120px;
   height: 80px;
   position: absolute;
@@ -189,18 +189,18 @@ export default {
   pointer-events: auto;
   transition: all 0.2s ease-in-out;
   font-size: 14px;
-  color: #ffffff; /* White text */
+  color: var(--parchment);
   padding: 5px;
-  box-shadow: 2px 2px 10px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--shadow);
   text-align: center;
 }
 
 .action-button span {
   font-size: 18px;
-  color: #ffffff; /* White text */
+  color: var(--parchment);
 }
 .action-button:hover {
-  background: #333333; /* Darker black on hover */
+  background: var(--panel-soft);
   transform: translate(-50%, -50%) scale(1.05);
 }
 
@@ -215,11 +215,11 @@ export default {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #333333; /* Darker black for cost label background */
-  color: #ffffff; /* White text for cost label */
+  background: var(--gold-soft);
+  color: var(--parchment);
   font-size: 12px;
-  padding: 2px 5px;
-  border-radius: 5 px;
+  padding: 2px 6px;
+  border-radius: 999px;
 }
 
 .small-icon {

@@ -22,7 +22,7 @@ import { io } from "socket.io-client";
         />
 
         <div v-if="timer" class="header-item">
-          Time until actions are refilled:
+          Next turn in
           {{
             timer > 86400
               ? Math.floor(timer / 86400) + " days"
@@ -34,11 +34,11 @@ import { io } from "socket.io-client";
           }}
         </div>
         <div v-if="user" class="header-item">
-          Your actions: {{ 10 - user.actions.length }}
+          Actions: <strong>{{ 10 - user.actions.length }}/10</strong>
         </div>
-        <div v-if="user && user.resources" class="resource-item">
+        <div v-if="user && user.resources" class="resource-item" title="Gold">
           <img class="resource-icon" src="images/icons/gold.png" alt="Gold" />
-          <span>Gold: {{ user.resources.gold }}</span>
+          <span>{{ user.resources.gold }}</span>
         </div>
         <div v-if="user && user.resources" class="resource-item">
           <img
@@ -47,7 +47,7 @@ import { io } from "socket.io-client";
             style="margin-bottom: 2px"
             alt="Wood"
           />
-          <span>Wood: {{ user.resources.wood }}</span>
+          <span>{{ user.resources.wood }}</span>
         </div>
         <div v-if="user && user.resources" class="resource-item">
           <img
@@ -56,7 +56,7 @@ import { io } from "socket.io-client";
             style="margin-bottom: 2px"
             alt="Stone"
           />
-          <span>Stone: {{ user.resources.stone }}</span>
+          <span>{{ user.resources.stone }}</span>
         </div>
         <div v-if="user && user.resources" class="resource-item">
           <img
@@ -65,7 +65,7 @@ import { io } from "socket.io-client";
             style="margin-bottom: 2px"
             alt="Wood"
           />
-          <span>Food: {{ user.resources.food }}</span>
+          <span>{{ user.resources.food }}</span>
         </div>
       </div>
 
@@ -90,10 +90,8 @@ import { io } from "socket.io-client";
       />
 
       <div v-if="user" class="right-section">
-        <h1 class="header-item logout-size">
-          Logged in as: {{ user.username }}
-        </h1>
-        <h1 @click="logout" class="logout logout-size">Log Out</h1>
+        <span class="header-item username logout-size">{{ user.username }}</span>
+        <button @click="logout" class="logout logout-size">Log out</button>
       </div>
     </div>
 
@@ -275,8 +273,9 @@ import { io } from "socket.io-client";
         <div
           class="board-container"
           :style="{
-            transform: 'scale(' + zoom + ')',
-            transformOrigin: originX + 'px ' + originY + 'px',
+            transform:
+              'translate(' + panX + 'px, ' + panY + 'px) scale(' + zoom + ')',
+            transformOrigin: '0 0',
           }"
         >
           <div v-for="(row, y) in board" :key="y" style="display: flex">
@@ -466,8 +465,9 @@ export default {
       selectedActionType: null,
       timer: 0,
       zoom: 0.4,
-      originX: 0,
-      originY: 0,
+      panX: 0,
+      panY: 0,
+      boardCentered: false,
       isDragging: false,
       dragging: false,
       dragStartX: 0,
@@ -953,35 +953,52 @@ export default {
     handleWheel(event) {
       event.preventDefault();
 
-      const boardContainer = this.$el.querySelector(".board-container");
-
       const oldZoom = this.zoom;
+      const newZoom =
+        event.deltaY < 0
+          ? Math.min(oldZoom + 0.075, 3) // max zoom
+          : Math.max(oldZoom - 0.075, 0.3); // min zoom
+      if (newZoom === oldZoom) return;
 
-      if (event.deltaY < 0) {
-        this.zoom = Math.min(this.zoom + 0.075, 3); // Limit max zoom level (e.g., 3)
-      } else {
-        if (this.zoom <= 0.3) return;
-        this.zoom = Math.max(this.zoom - 0.075, 0.3); // Limit min zoom level (e.g., 0.35)
-      }
+      // Zoom about the cursor: whatever board point is under the mouse before
+      // the zoom must still be under the mouse after it.
+      const rect = this.$el
+        .querySelector(".scroll-container")
+        .getBoundingClientRect();
+      const cursorX = event.clientX - rect.left;
+      const cursorY = event.clientY - rect.top;
 
-      const newZoom = this.zoom;
+      const boardX = (cursorX - this.panX) / oldZoom;
+      const boardY = (cursorY - this.panY) / oldZoom;
 
-      // Determine the center of the container
-      const centerX = boardContainer.scrollWidth / 2;
-      const centerY = boardContainer.scrollHeight / 2;
-
-      const mousePointToCenterX = centerX - boardContainer.scrollLeft;
-      const mousePointToCenterY = centerY - boardContainer.scrollTop;
-      const newX =
-        mousePointToCenterX * (newZoom / oldZoom) - mousePointToCenterX;
-      const newY =
-        mousePointToCenterY * (newZoom / oldZoom) - mousePointToCenterY;
-
-      boardContainer.scrollLeft += newX;
-      boardContainer.scrollTop += newY;
-
-      // Apply the scale to the board container
-      boardContainer.style.transform = `scale(${newZoom})`;
+      this.zoom = newZoom;
+      this.panX = cursorX - boardX * newZoom;
+      this.panY = cursorY - boardY * newZoom;
+      this.clampPan();
+    },
+    clampPan() {
+      // Never let the board be dragged/zoomed fully off screen.
+      const container = this.$el.querySelector(".scroll-container");
+      const board = this.$el.querySelector(".board-container");
+      if (!container || !board) return;
+      const margin = 120; // px of board that must stay visible
+      const boardW = board.offsetWidth * this.zoom;
+      const boardH = board.offsetHeight * this.zoom;
+      this.panX = Math.min(
+        Math.max(this.panX, margin - boardW),
+        container.clientWidth - margin
+      );
+      this.panY = Math.min(
+        Math.max(this.panY, margin - boardH),
+        container.clientHeight - margin
+      );
+    },
+    centerBoard() {
+      const container = this.$el.querySelector(".scroll-container");
+      const board = this.$el.querySelector(".board-container");
+      if (!container || !board) return;
+      this.panX = (container.clientWidth - board.offsetWidth * this.zoom) / 2;
+      this.panY = (container.clientHeight - board.offsetHeight * this.zoom) / 2;
     },
     startDrag(event) {
       event.preventDefault();
@@ -1004,15 +1021,15 @@ export default {
     moveCamera(event) {
       if (!this.dragging) return;
 
-      const container = this.$el.querySelector(".scroll-container");
-      const deltaX = event.clientX - this.dragStartX;
-      const deltaY = event.clientY - this.dragStartY;
-
-      container.scrollLeft -= deltaX;
-      container.scrollTop -= deltaY;
+      // Pan by moving the board's translate, 1:1 with the mouse. The old code
+      // used scrollLeft/scrollTop, whose range comes from the UNSCALED layout —
+      // at high zoom the far corners of the board were unreachable.
+      this.panX += event.clientX - this.dragStartX;
+      this.panY += event.clientY - this.dragStartY;
 
       this.dragStartX = event.clientX;
       this.dragStartY = event.clientY;
+      this.clampPan();
     },
 
     async logout() {
@@ -1131,6 +1148,10 @@ export default {
       this.selectedCell = null;
       this.actionPopup = false;
       this.board = newBoard;
+      if (!this.boardCentered) {
+        this.boardCentered = true;
+        this.$nextTick(() => this.centerBoard());
+      }
     });
 
     this.$socket.on("updateTimer", (timerValue) => {
@@ -1218,8 +1239,9 @@ export default {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 10px;
-  background-color: #1d1e22;
+  padding: 10px 14px;
+  background-color: var(--ink);
+  border-bottom: 1px solid var(--line);
   max-height: 50px;
   position: relative;
 }
@@ -1228,13 +1250,23 @@ export default {
 .right-section {
   display: flex;
   align-items: center;
-  color: rgb(240, 240, 240);
+  color: var(--parchment);
 }
 
 .header-item {
   margin-right: 1rem;
-  font-weight: 600;
-  color: rgb(240, 240, 240);
+  font-weight: 500;
+  color: var(--parchment-dim);
+}
+
+.header-item strong {
+  color: var(--parchment);
+  font-weight: 700;
+}
+
+.username {
+  color: var(--parchment);
+  font-weight: 700;
 }
 .left-section div,
 .logout-size {
@@ -1244,23 +1276,30 @@ export default {
 .resource-item {
   display: flex;
   align-items: center;
-  margin-right: 1.5rem;
+  gap: 5px;
+  margin-right: 0.5rem;
+  padding: 3px 10px 3px 6px;
+  background-color: var(--gold-soft);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  font-weight: 700;
+  color: var(--parchment);
 }
 
 .resource-icon {
-  width: 26px;
-  height: 26px;
-  margin-right: 5px;
+  width: 22px;
+  height: 22px;
 }
 
 .logout {
   cursor: pointer;
-  color: #61dafb;
-  font-weight: 600;
-  text-decoration: underline;
+  background: none;
+  color: var(--gold);
+  font-family: var(--font-ui);
+  font-weight: 700;
 }
 .logout:hover {
-  color: #3fa7c4;
+  text-decoration: underline;
 }
 /* .logout {
   border: 2px solid black;
@@ -1289,14 +1328,20 @@ export default {
 
 .info-panel {
   position: absolute;
-  right: 0;
-  top: 70px;
+  right: 12px;
+  top: 82px;
   width: 260px;
-  background-color: #1d1e22;
-  color: rgb(240, 240, 240);
+  background-color: var(--panel);
+  color: var(--parchment);
+  border: 1px solid var(--line);
   padding: 16px;
   z-index: 2;
-  border-radius: 0 0 0 6px;
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+}
+
+.info-item span:first-child {
+  color: var(--parchment-dim);
 }
 .info-item {
   display: flex;
@@ -1343,8 +1388,9 @@ export default {
 .board-container {
   margin: 0 auto;
   position: relative;
-  transform-origin: right;
-  transition: transform 0.3s;
+  /* transform-origin and transform are bound inline; no transition — pan is
+     transform-driven now, and easing makes drag feel laggy and cursor-anchored
+     zoom swim. */
   padding: 240px;
   width: fit-content;
 }
@@ -1361,18 +1407,19 @@ export default {
   height: 50px;
   line-height: 50px;
   text-align: center;
-  background-color: #333;
-  color: rgb(240, 240, 240);
+  background-color: var(--panel);
+  border: 1px solid var(--line);
+  color: var(--parchment-dim);
   cursor: pointer;
-  box-shadow: 0 2px 10px 0 rgba(0, 0, 0, 0.2);
-  transition: all 0.3s ease-in-out;
+  box-shadow: var(--shadow);
+  transition: all 0.2s ease-in-out;
   z-index: 999;
 }
 
 .help-button:hover {
-  background-color: #666666;
-  transform: scale(1.1);
-  box-shadow: 0 2px 20px 0 rgba(0, 0, 0, 0.3);
+  border-color: var(--gold);
+  color: var(--parchment);
+  transform: scale(1.06);
 }
 .modal-spawn {
   position: fixed;
@@ -1388,8 +1435,8 @@ export default {
   display: flex;
 }
 .modal-content-spawn {
-  background-color: #1a1a1a;
-  border: 1px solid #333333;
+  background-color: var(--panel);
+  border: 1px solid var(--line);
   border-radius: 8px;
   box-shadow: 0px 2px 10px rgba(0, 0, 0, 0.2);
   width: 80%;
@@ -1399,31 +1446,31 @@ export default {
   position: relative;
   animation-name: animatetop;
   animation-duration: 0.4s;
-  font-family: "Helvetica Neue", Arial, sans-serif;
-  color: white;
+  font-family: var(--font-ui);
+  color: var(--parchment);
   display: flex;
   flex-direction: column;
   justify-content: center;
   align-items: center;
 }
 .modal-spawn-button {
-  border: 1px black solid;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background-color: var(--ink);
   width: 170px;
   text-align: center;
-  padding: 14px 10px;
+  padding: 13px 10px;
   cursor: pointer;
-  margin: 0.5rem 0;
-  transition: transform 0.4s ease-out;
+  transition: border-color 0.2s ease, background-color 0.2s ease;
   margin: 0 8px;
+  font-weight: 700;
 }
 .modal-spawn-button:hover {
-  background-color: #000000;
-  transform: scale(1.075);
+  background-color: var(--panel-soft);
+  border-color: var(--gold);
 }
 .modal-spawn-button:active {
-  background-color: #000000;
-  transform: scale(0.95);
-  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.15);
+  transform: scale(0.97);
 }
 .modal {
   position: fixed;
@@ -1437,8 +1484,8 @@ export default {
 }
 
 .modal-content {
-  background-color: #1a1a1a;
-  border: 1px solid #333333;
+  background-color: var(--panel);
+  border: 1px solid var(--line);
   border-radius: 8px;
   box-shadow: 0px 2px 10px rgba(0, 0, 0, 0.2);
   width: 80%;
@@ -1448,7 +1495,7 @@ export default {
   position: relative;
   animation-name: animatetop;
   animation-duration: 0.3s;
-  font-family: "Helvetica Neue", Arial, sans-serif;
+  font-family: var(--font-ui);
 }
 
 @keyframes animatetop {
@@ -1465,12 +1512,12 @@ export default {
 .modal-content h2,
 .modal-content h3,
 .modal-content h4 {
-  color: #eeeeee;
+  color: var(--parchment);
   margin-bottom: 10px;
 }
 
 .modal-content p {
-  color: #bbbbbb;
+  color: var(--parchment-dim);
   line-height: 1.6;
   margin-bottom: 20px;
 }
@@ -1502,11 +1549,13 @@ export default {
   filter: brightness(1.1);
 }
 .father {
-  background-color: #1d1e22f1;
+  background-color: #1a1610;
   overflow: hidden;
 }
 .user-identifier-absolute-cell-information {
-  border: 1px rgb(240, 240, 240) solid;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
   position: absolute;
   top: 0;
   right: 0;
@@ -1534,11 +1583,13 @@ export default {
 
 .alert {
   margin-top: 10px;
-  background-color: #e74c3c;
-  color: rgb(240, 240, 240);
-  padding: 10px;
-  border-radius: 5px;
-  opacity: 0.9;
+  background-color: var(--rust);
+  color: #fff6ea;
+  padding: 9px 14px;
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow);
+  font-weight: 500;
+  opacity: 0.96;
   transition: opacity 0.5s;
 }
 
@@ -1565,9 +1616,10 @@ export default {
 .first-spawn-modal-popup-content {
   max-width: 400px;
   padding: 20px;
-  background-color: #000;
-  color: #fff;
-  border-radius: 5px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  background-color: var(--panel);
+  border: 1px solid var(--line);
+  color: var(--parchment);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
 }
 </style>

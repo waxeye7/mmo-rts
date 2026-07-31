@@ -161,7 +161,8 @@ h2 {
   position: absolute;
   height: 100px;
   width: 100px;
-  background-color: #1d1e22;
+  background-color: var(--panel);
+  border: 1px solid var(--line);
   z-index: 5001;
   bottom: -34px;
   right: -34px;
@@ -174,8 +175,9 @@ h2 {
   left: -16px;
   height: 30px;
   width: fit-content;
-  background-color: #1d1e22;
-  /* border-radius: 6px 0 0 0; */
+  background-color: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
   display: flex;
   justify-content: center;
   align-items: center;
@@ -187,13 +189,13 @@ h2 {
   margin-right: 10px;
   height: 4px;
   width: 20px;
-  background-color: rgb(240, 240, 240);
+  background-color: var(--parchment-dim);
 }
 .curved-minimiser:hover {
-  background-color: rgb(240, 240, 240);
+  border-color: var(--gold);
 }
 .curved-minimiser:hover > div {
-  background-color: #1d1e22;
+  background-color: var(--parchment);
 }
 
 .actions-dashboard {
@@ -202,9 +204,10 @@ h2 {
   bottom: 0;
   right: 0;
   padding: 16px;
-  background-color: #1d1e22;
-  color: rgb(240, 240, 240);
-  border-radius: 6px 0 0 0;
+  background-color: var(--panel);
+  border: 1px solid var(--line);
+  color: var(--parchment);
+  border-radius: var(--radius) 0 0 0;
   width: 260px;
   transition: all 0.5s ease;
   -ms-overflow-style: none; /* Internet Explorer and Edge */
@@ -215,7 +218,8 @@ h2 {
 }
 
 .action-item {
-  border: 1px rgb(240, 240, 240) rgb(240, 240, 240) solid;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
   padding: auto;
   display: flex;
   justify-content: space-between;
@@ -266,16 +270,11 @@ button {
   text-align: center;
   width: 100%;
   padding: 4px 0;
-  background-color: rgba(0, 0, 0, 1);
+  background-color: var(--ink);
 }
 
 .action-container:hover {
-  background-color: rgba(
-    0,
-    0,
-    0,
-    0.9
-  ); /* Your hover background color, semi-transparent black in this case */
+  background-color: rgba(22, 16, 8, 0.9);
 }
 
 .action-container:hover .content-wrapper {
