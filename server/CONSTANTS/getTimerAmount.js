@@ -1,5 +1,7 @@
 function getTimerAmount() {
-  return 20 * 1000;
+  // Must match the turn cron in server/index.js (hourly) — this value is what
+  // the "time until actions refill" countdown is derived from.
+  return 60 * 60 * 1000;
 }
 
 module.exports = getTimerAmount;

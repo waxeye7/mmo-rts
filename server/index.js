@@ -2,7 +2,7 @@ const cron = require("node-cron");
 const { v4: uuidv4 } = require("uuid");
 require("dotenv").config();
 const mongoose = require("mongoose");
-const url = "mongodb://127.0.0.1:27017/mmo-rts";
+const url = process.env.MONGODB_URI || "mongodb://127.0.0.1:27017/mmo-rts";
 const loadBoardState = require("./controllers/board/loadBoardState");
 const saveBoardState = require("./controllers/board/saveBoardState");
 const resetActions = require("./controllers/user/resetActions");
@@ -31,33 +31,36 @@ const addUnit = require("./controllers/user/addUnit");
 const deleteBuilding = require("./controllers/user/deleteBuilding");
 const deleteUnit = require("./controllers/user/deleteUnit");
 const app = express();
+
+const PORT = Number(process.env.PORT) || 3000;
+const HOST = process.env.HOST || "0.0.0.0";
+
 let server;
-if (process.env.NODE_ENV === "production") {
-  // Use HTTPS with SSL certificates in production
+// TLS_CERT_DIR keeps the original behaviour of terminating TLS in-process.
+// Leave it unset when a reverse proxy (nginx) terminates TLS and forwards
+// plain HTTP to a loopback port — that is how mmo.marlyman123.com runs.
+if (process.env.TLS_CERT_DIR) {
   const https = require("https");
   const fs = require("fs");
 
   const privateKey = fs.readFileSync(
-    "/etc/letsencrypt/live/mmo-rts.com/privkey.pem",
+    `${process.env.TLS_CERT_DIR}/privkey.pem`,
     "utf8"
   );
   const certificate = fs.readFileSync(
-    "/etc/letsencrypt/live/mmo-rts.com/fullchain.pem",
+    `${process.env.TLS_CERT_DIR}/fullchain.pem`,
     "utf8"
   );
   const credentials = { key: privateKey, cert: certificate };
 
   server = https.createServer(credentials, app);
-  server.listen(3000, () => {
-    console.log("Server listening on port 3000");
-  });
 } else {
-  // Use plain HTTP for development
   server = http.createServer(app);
-  server.listen(3000, () => {
-    console.log("Server listening on port 3000");
-  });
 }
+
+server.listen(PORT, HOST, () => {
+  console.log(`Server listening on ${HOST}:${PORT}`);
+});
 
 mongoose.connect(url, { useNewUrlParser: true });
 const db = mongoose.connection;
@@ -78,14 +81,23 @@ const cors = require("cors");
 // Initialize socket.io
 const io = socket.initializeSocket(server);
 
+// The single origin the browser loads the game from. Overridable so the same
+// code can serve mmo-rts.com, mmo.marlyman123.com, or localhost.
+const CLIENT_ORIGIN =
+  process.env.CLIENT_ORIGIN ||
+  (process.env.NODE_ENV === "production"
+    ? "https://mmo-rts.com"
+    : "http://localhost:8080");
+
 // Configure CORS for Socket.IO
 io.use((socket, next) => {
   const origin = socket.handshake.headers.origin;
-  const allowedOrigin =
-    process.env.NODE_ENV === "production"
-      ? "https://mmo-rts.com"
-      : "http://localhost:8080";
-  if (allowedOrigin === origin) {
+  // Browsers omit Origin on same-origin GETs. When the client and the API are
+  // served from one hostname (nginx in front of both), a missing Origin means
+  // same-origin, which is exactly what we want to allow. The original code
+  // could assume Origin was always present because the client lived on a
+  // different port and every request was cross-origin.
+  if (!origin || CLIENT_ORIGIN === origin) {
     next();
   } else {
     return next(new Error("CORS not allowed"));
@@ -95,10 +107,7 @@ io.use((socket, next) => {
 // Configure CORS for Express
 app.use(
   cors({
-    origin:
-      process.env.NODE_ENV === "production"
-        ? "https://mmo-rts.com"
-        : "http://localhost:8080",
+    origin: CLIENT_ORIGIN,
     methods: ["GET", "POST", "PUT", "DELETE"],
     allowedHeaders: ["Content-Type"],
     credentials: true,
@@ -214,6 +223,16 @@ app.use("/users", UsersRoute);
 // Auth routes
 const AuthRoute = require("./routes/auth.js");
 app.use("/auth", AuthRoute);
+
+// The client uses vue-router history mode, so a hard refresh on /login asks the
+// server for a file that doesn't exist. Hand back the SPA shell instead.
+const path = require("path");
+app.get("*", (req, res, next) => {
+  if (req.method !== "GET" || req.path.startsWith("/socket.io")) return next();
+  res.sendFile(path.join(__dirname, "..", "dist", "index.html"), (err) => {
+    if (err) next();
+  });
+});
 
 const handleAction = async (socket, action, userId) => {
   console.log("Received action:", action);
@@ -901,8 +920,8 @@ broadcastRemainingTime();
 //   }
 // }, 1000);
 
-cron.schedule("0 2 */2 * *", async () => {
-  // cron.schedule('0 */12 * * *', async () => {
+// Process turns every hour, on the hour.
+cron.schedule("0 * * * *", async () => {
   board = await loadBoardState(db);
   await processActions();
   const resetSuccessful = await resetActions();
@@ -921,19 +940,5 @@ cron.schedule("0 2 */2 * *", async () => {
   broadcastRemainingTime();
 });
 
-cron.schedule("0 2 * * *", async () => {
-  try {
-    console.log("Database reset scheduled task started");
-
-    // Drop the existing database
-    await mongoose.connection.db.dropDatabase();
-
-    // Load the initial state of the board after the reset
-    board = await loadBoardState(db);
-    nextTaskTimestamp = await loadNextTaskTimestamp();
-
-    console.log("Database reset completed successfully");
-  } catch (error) {
-    console.error("Error during database reset:", error);
-  }
-});
+// The original daily dropDatabase() cron is intentionally gone: the world and
+// player accounts persist now. Turns are processed by the hourly cron above.
