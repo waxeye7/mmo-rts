@@ -27,10 +27,6 @@ import { io } from "socket.io-client";
         <a href="https://github.com/waxeye7/mmo-rts" target="_blank">
           <img src="/images/icons/github-icon.svg" alt="GitHub" />
         </a>
-
-        <a href="https://discord.gg/ptUjrfSRPq" target="_blank">
-          <img src="/images/icons/discord-icon.svg" alt="Discord" />
-        </a>
       </div>
 
       <div v-if="selectedForm === 'login'" class="form-container">
@@ -155,7 +151,7 @@ export default {
     return {
       bgImage: "",
       connectedUsers: null, // This would be updated via socket
-      version: "1.0.1", // This would be updated as needed
+      version: "1.1",
       selectedForm: null,
       loginForm: {
         username: "",
@@ -308,6 +304,14 @@ export default {
 
     // Register the socket event handler
     this.$socket.on("user count", handleUserCount);
+
+    // connectToSocket() disconnects the shared socket during login, so a
+    // logout lands here with a dead socket and the count never arrives.
+    // Reconnect it and ask again once the connection is up.
+    if (this.$socket.disconnected) {
+      this.$socket.connect();
+      this.$socket.once("connect", () => this.$socket.emit("get user count"));
+    }
 
     // Emit an event to request the current count of connected users
     this.$socket.emit("get user count");
