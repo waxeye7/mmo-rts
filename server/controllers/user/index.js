@@ -6,4 +6,4 @@ const getAllUserIdentifiers = require('./getAllUserIdentifiers');
 const deleteAction = require('./deleteAction');
 const placeFirstSpawn = require('./placeFirstSpawn');
 
-module.exports = { getUser, updateUser, me, resetActions, getAllUserIdentifiers, deleteAction, placeFirstSpawn };
+module.exports = { getUser, updateUser, me, resetActions, getAllUserIdentifiers, deleteAction, placeFirstSpawn, submitAction: require("./submitAction") };

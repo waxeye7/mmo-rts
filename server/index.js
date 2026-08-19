@@ -19,6 +19,7 @@ const {
   resourceGatheringActionsQueue,
   conflictActionsQueue,
   moveActionsQueue,
+  enqueue,
 } = require("./actionsQueue");
 const jwt = require("jsonwebtoken");
 const getBoardSize = require("./CONSTANTS/getBoardSize");
@@ -282,31 +283,7 @@ const handleAction = async (socket, action, userId) => {
   let updatedUser = await addAction(action, userId);
   if (updatedUser) {
     socket.emit("updateUser", updatedUser);
-
-    if (action.type === "build spawn" || action.type === "build tower") {
-      buildActionsQueue.push({ action, userId });
-    } else if (
-      action.type === "spawn worker" ||
-      action.type === "spawn axeman" ||
-      action.type === "spawn archer"
-    ) {
-      spawningActionsQueue.push({ action, userId });
-    } else if (action.type === "worker mine") {
-      resourceGatheringActionsQueue.push({ action, userId });
-    } else if (
-      action.type === "tower shoot" ||
-      action.type === "axeman attack" ||
-      action.type === "worker attack" ||
-      action.type === "archer shoot"
-    ) {
-      conflictActionsQueue.push({ action, userId });
-    } else if (
-      action.type === "move worker" ||
-      action.type === "move axeman" ||
-      action.type === "move archer"
-    ) {
-      moveActionsQueue.push({ action, userId });
-    } else {
+    if (!enqueue(action, userId)) {
       console.log(
         "invalid action type from user",
         userId,
@@ -934,8 +911,37 @@ broadcastRemainingTime();
 // }, 1000);
 
 // Process turns every hour, on the hour.
+const hydrateQueuesFromDb = async () => {
+  const queuedIds = new Set();
+  for (const q of [
+    buildActionsQueue,
+    spawningActionsQueue,
+    resourceGatheringActionsQueue,
+    conflictActionsQueue,
+    moveActionsQueue,
+  ]) {
+    for (const request of q) {
+      if (request.action && request.action.id) queuedIds.add(request.action.id);
+    }
+  }
+  const users = await User.find().select("_id actions");
+  let added = 0;
+  for (const user of users) {
+    for (const action of user.actions || []) {
+      if (!action || !action.type) continue;
+      if (action.id && queuedIds.has(action.id)) continue;
+      if (enqueue(action, user._id)) {
+        added += 1;
+        if (action.id) queuedIds.add(action.id);
+      }
+    }
+  }
+  if (added) console.log("hydrated", added, "persisted actions into memory queues");
+};
+
 cron.schedule("0 * * * *", async () => {
   board = await loadBoardState(db);
+  await hydrateQueuesFromDb();
   await processActions();
   const resetSuccessful = await resetActions();
 

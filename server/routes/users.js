@@ -1,7 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const jwtMiddleware = require("../middlewares/jwtMiddleware");
-const { getUser, updateUser, me, getAllUserIdentifiers, deleteAction, placeFirstSpawn } = require("../controllers/user");
+const { getUser, updateUser, me, getAllUserIdentifiers, deleteAction, placeFirstSpawn, submitAction } = require("../controllers/user");
 
 // UPDATE a User by ID
 router.put("/:id", jwtMiddleware, updateUser);
@@ -18,7 +18,10 @@ router.get("/getone/:id", jwtMiddleware, getUser);
 // GET a User by ID
 router.post("/placefirstspawn", jwtMiddleware, placeFirstSpawn);
 
+// Queue an action (bots / clients that cannot rely on in-memory socket state)
+router.post("/actions", jwtMiddleware, submitAction);
+
 // DELETE an action by Index
-router.delete("/actions/:id", jwtMiddleware, deleteAction)
+router.delete("/actions/:id", jwtMiddleware, deleteAction);
 
 module.exports = router;

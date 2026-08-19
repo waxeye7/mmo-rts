@@ -4,6 +4,37 @@ let resourceGatheringActionsQueue = [];
 let conflictActionsQueue = [];
 let moveActionsQueue = [];
 
+const enqueue = (action, userId) => {
+  if (!action || !action.type) return false;
+  if (action.type === "build spawn" || action.type === "build tower") {
+    buildActionsQueue.push({ action, userId });
+  } else if (
+    action.type === "spawn worker" ||
+    action.type === "spawn axeman" ||
+    action.type === "spawn archer"
+  ) {
+    spawningActionsQueue.push({ action, userId });
+  } else if (action.type === "worker mine") {
+    resourceGatheringActionsQueue.push({ action, userId });
+  } else if (
+    action.type === "tower shoot" ||
+    action.type === "axeman attack" ||
+    action.type === "worker attack" ||
+    action.type === "archer shoot"
+  ) {
+    conflictActionsQueue.push({ action, userId });
+  } else if (
+    action.type === "move worker" ||
+    action.type === "move axeman" ||
+    action.type === "move archer"
+  ) {
+    moveActionsQueue.push({ action, userId });
+  } else {
+    return false;
+  }
+  return true;
+};
+
 const removeActionFromQueue = (id) => {
   let queueIndex = moveActionsQueue.findIndex(request => request.action.id === id);
   if (queueIndex !== -1) {
@@ -32,5 +63,6 @@ module.exports = {
   resourceGatheringActionsQueue,
   conflictActionsQueue,
   moveActionsQueue,
-  removeActionFromQueue
+  removeActionFromQueue,
+  enqueue,
 };

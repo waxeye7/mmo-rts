@@ -984,8 +984,16 @@ export default {
         this.logout();
       }
     },
-    leaveSpectate() {
-      this.$router.push("/login");
+    async leaveSpectate() {
+      try {
+        const response = await fetch(
+          process.env.VUE_APP_API_URL + `/users/me`,
+          { credentials: "include" }
+        );
+        this.$router.push(response.ok ? "/" : "/login");
+      } catch {
+        this.$router.push("/login");
+      }
     },
     async loadPublicState() {
       try {
@@ -1413,6 +1421,7 @@ export default {
   color: var(--gold);
   font-family: var(--font-ui);
   font-weight: 700;
+  margin-left: 12px;
 }
 .logout:hover {
   text-decoration: underline;
@@ -1496,6 +1505,7 @@ export default {
   height: 100%;
   overflow: hidden;
   box-sizing: border-box;
+
 }
 .scroll-container:active {
   cursor: move !important;

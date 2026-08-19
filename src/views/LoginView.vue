@@ -177,20 +177,22 @@ export default {
   methods: {
     selectRandomImage() {
       const images = [
-        "/images/misc/background/background.png",
-        "/images/misc/background/background2.png",
-        "/images/misc/background/background3.png",
-        "/images/misc/background/background5.png",
-        "/images/misc/background/background6.png",
-        "/images/misc/background/background7.png",
-        "/images/misc/background/background9.png",
-        "/images/misc/background/background11.png",
+        "/images/misc/background/cover-01.jpg",
+        "/images/misc/background/cover-02.jpg",
+        "/images/misc/background/cover-03.jpg",
+        "/images/misc/background/cover-04.jpg",
+        "/images/misc/background/cover-05.jpg",
+        "/images/misc/background/cover-06.jpg",
+        "/images/misc/background/cover-07.jpg",
+        "/images/misc/background/cover-08.jpg",
+        "/images/misc/background/cover-09.jpg",
+        "/images/misc/background/cover-10.jpg",
+        "/images/misc/background/cover-login.jpg",
       ];
-      const randomIndex = Math.floor(Math.random() * images.length);
-      const selectedImage = images[randomIndex];
+      const selectedImage = images[Math.floor(Math.random() * images.length)];
       document.documentElement.style.setProperty(
         "--bg-image",
-        `url(${selectedImage})`
+        "url(" + selectedImage + ")"
       );
     },
     connectToSocket() {
