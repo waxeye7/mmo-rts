@@ -132,7 +132,16 @@ io.on("connection", (socket) => {
     io.emit("user count", numUsers);
   });
 
-  socket.on("getInitialValues", () => {
+  socket.on("getInitialValues", async () => {
+    // Reload from Mongo so spectators (and anyone who joined mid-hour)
+    // see first-spawns that landed after the last cron tick. The live
+    // in-memory board otherwise lags the database until :00.
+    try {
+      const fresh = await loadBoardState(db);
+      if (fresh) board = fresh;
+    } catch (err) {
+      console.error("Failed to refresh board for spectator:", err);
+    }
     socket.emit("updateBoard", board);
     broadcastRemainingTime();
   });
@@ -223,6 +232,10 @@ app.use("/users", UsersRoute);
 // Auth routes
 const AuthRoute = require("./routes/auth.js");
 app.use("/auth", AuthRoute);
+
+// Public spectator snapshot (no login)
+const PublicRoute = require("./routes/public.js");
+app.use("/public", PublicRoute);
 
 // The client uses vue-router history mode, so a hard refresh on /login asks the
 // server for a file that doesn't exist. Hand back the SPA shell instead.

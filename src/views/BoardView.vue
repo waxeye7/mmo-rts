@@ -21,6 +21,10 @@ import { io } from "socket.io-client";
           :zoom="null"
         />
 
+        <div v-if="isSpectating" class="header-item spectate-label">
+          Spectating
+        </div>
+
         <div v-if="timer" class="header-item">
           Next turn in
           {{
@@ -33,8 +37,29 @@ import { io } from "socket.io-client";
               : timer + " seconds"
           }}
         </div>
-        <div v-if="user" class="header-item">
+        <div v-if="user && !isSpectating" class="header-item">
           Actions: <strong>{{ 10 - user.actions.length }}/10</strong>
+        </div>
+        <div
+          v-if="isSpectating"
+          class="player-roster"
+          title="Players in this world"
+        >
+          <div
+            v-for="name in playerNames"
+            :key="name"
+            class="roster-chip"
+            :title="name"
+          >
+            <UserIdentifier
+              v-if="userIdentifierInfo[name]"
+              :backgroundColor="userIdentifierInfo[name].backgroundColor"
+              :shape="userIdentifierInfo[name].shape"
+              :fillColor="userIdentifierInfo[name].fillColor"
+              :zoom="null"
+            />
+            <span>{{ name }}</span>
+          </div>
         </div>
         <div v-if="user && user.resources" class="resource-item" title="Gold">
           <img class="resource-icon" src="images/icons/gold.png" alt="Gold" />
@@ -84,18 +109,26 @@ import { io } from "socket.io-client";
       />
 
       <CurrentAction
-        v-if="hasNothing"
+        v-if="hasNothing && !isSpectating"
         :actionType="'Placing your first spawn - choose wisely'"
         @cancel_target_selection="cancelTargetSelection"
       />
 
-      <div v-if="user" class="right-section">
+      <div v-if="isSpectating" class="right-section">
+        <button @click="leaveSpectate" class="logout logout-size">
+          Leave
+        </button>
+      </div>
+      <div v-else-if="user" class="right-section">
         <span class="header-item username logout-size">{{ user.username }}</span>
         <button @click="logout" class="logout logout-size">Log out</button>
       </div>
     </div>
 
-    <div class="modal-spawn" v-if="confirmFirstSpawnLocationPopup">
+    <div
+      class="modal-spawn"
+      v-if="confirmFirstSpawnLocationPopup && !isSpectating"
+    >
       <div class="modal-content-spawn">
         <h3 class="message">Confirm spawn location</h3>
         <div class="buttons">
@@ -343,7 +376,10 @@ import { io } from "socket.io-client";
                 </button>
                 <ActionBubble
                   v-if="
-                    selectedCell && selectedCell.x === x && selectedCell.y === y
+                    !isSpectating &&
+                    selectedCell &&
+                    selectedCell.x === x &&
+                    selectedCell.y === y
                   "
                   :cell="cell"
                   :user="user"
@@ -358,7 +394,13 @@ import { io } from "socket.io-client";
         </div>
       </div>
       <ActionsDashboard
-        v-if="user && user.username && user.actions && user.actions.length"
+        v-if="
+          !isSpectating &&
+          user &&
+          user.username &&
+          user.actions &&
+          user.actions.length
+        "
         style="transition-delay: 100ms"
         :actions="user.actions"
         :board="board"
@@ -503,6 +545,12 @@ export default {
     };
   },
   computed: {
+    isSpectating() {
+      return this.$route.meta && this.$route.meta.spectate === true;
+    },
+    playerNames() {
+      return Object.keys(this.userIdentifierInfo || {}).sort();
+    },
     actionButtonsPosition() {
       if (!this.selectedCell) return {};
       const cellSize = 100;
@@ -936,6 +984,30 @@ export default {
         this.logout();
       }
     },
+    leaveSpectate() {
+      this.$router.push("/login");
+    },
+    async loadPublicState() {
+      try {
+        const response = await fetch(
+          process.env.VUE_APP_API_URL + `/public/state`,
+          { credentials: "omit" }
+        );
+        if (!response.ok) return;
+        const data = await response.json();
+        if (data.board) this.board = data.board;
+        if (data.players) this.userIdentifierInfo = data.players;
+        if (typeof data.remainingSeconds === "number") {
+          this.timer = data.remainingSeconds;
+        }
+        if (data.board && !this.boardCentered) {
+          this.boardCentered = true;
+          this.$nextTick(() => this.centerBoard());
+        }
+      } catch (error) {
+        console.error("Error loading public state:", error);
+      }
+    },
     selectCell(cell) {
       if (this.isDragging) {
         return;
@@ -943,7 +1015,7 @@ export default {
       if (this.selectedActionType) {
         return;
       }
-      if (this.hasNothing) {
+      if (this.hasNothing && !this.isSpectating) {
         this.confirmFirstSpawnLocationPopup = cell;
         return;
       }
@@ -1082,8 +1154,8 @@ export default {
         const usersInfo = await response.json();
         this.userIdentifierInfo = usersInfo;
       } catch (error) {
-        console.error("Error fetching user by ID:", error);
-        this.logout();
+        console.error("Error fetching user identifiers:", error);
+        if (!this.isSpectating) this.logout();
       }
     },
     async cancelAction(id) {
@@ -1134,12 +1206,16 @@ export default {
   },
   async created() {
     this.connectToSocket();
-    // get signed in user's object
-    await this.fetchUserById();
-    if (this.user && !this.user.buildings.length && !this.user.units.length) {
-      this.hasNothing = true;
-    } else {
+    if (this.isSpectating) {
       this.hasNothing = false;
+      await this.loadPublicState();
+    } else {
+      await this.fetchUserById();
+      if (this.user && !this.user.buildings.length && !this.user.units.length) {
+        this.hasNothing = true;
+      } else {
+        this.hasNothing = false;
+      }
     }
     // Set up the socket listeners
     this.$socket.on("updateBoard", (newBoard) => {
@@ -1173,26 +1249,33 @@ export default {
     });
 
     this.$socket.on("actionsReset", async () => {
-      await this.fetchUserById();
+      if (!this.isSpectating) await this.fetchUserById();
     });
 
     this.$socket.on("serverRestart", () => {
+      if (this.isSpectating) {
+        this.addAlert("Server restarted — map will refresh.");
+        this.$socket.emit("getInitialValues");
+        return;
+      }
       alert("You have been logged out due to a server restart.");
-
       this.logout();
     });
 
     this.$socket.on("authentication_error", () => {
+      if (this.isSpectating) return;
       alert("You have been logged out due to an authentication error.");
       this.logout();
     });
 
     // Listen for 'warning' and 'forceLogout' events
     this.$socket.on("warning", (message) => {
+      if (this.isSpectating) return;
       alert(message);
     });
 
     this.$socket.on("forceLogout", () => {
+      if (this.isSpectating) return;
       alert("You have been logged out due to excessive action attempts.");
       this.logout();
     });
@@ -1242,8 +1325,41 @@ export default {
   padding: 10px 14px;
   background-color: var(--ink);
   border-bottom: 1px solid var(--line);
-  max-height: 50px;
+  min-height: 50px;
   position: relative;
+  gap: 12px;
+}
+
+.spectate-label {
+  font-family: var(--font-display);
+  color: var(--gold);
+  letter-spacing: 0.04em;
+}
+
+.player-roster {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-left: 6px;
+}
+
+.roster-chip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 8px 2px 4px;
+  background-color: var(--gold-soft);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--parchment);
+}
+
+.roster-chip :deep(.identifier-container) {
+  width: 18px !important;
+  height: 18px !important;
 }
 
 .left-section,

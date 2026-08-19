@@ -14,12 +14,17 @@ import { io } from "socket.io-client";
       <p class="version-number">Version: {{ version }}</p>
     </header>
     <div class="main">
-      <div v-if="!selectedForm">
-        <button class="decider-button" @click="selectForm('login')">
-          Login
-        </button>
-        <button class="decider-button" @click="selectForm('signup')">
-          Sign up
+      <div v-if="!selectedForm" class="menu-actions">
+        <div class="menu-row">
+          <button class="decider-button" @click="selectForm('login')">
+            Login
+          </button>
+          <button class="decider-button" @click="selectForm('signup')">
+            Sign up
+          </button>
+        </div>
+        <button class="decider-button spectate-button" @click="spectate">
+          Spectate
         </button>
       </div>
 
@@ -151,7 +156,7 @@ export default {
     return {
       bgImage: "",
       connectedUsers: null, // This would be updated via socket
-      version: "1.1",
+      version: "1.2",
       selectedForm: null,
       loginForm: {
         username: "",
@@ -207,6 +212,9 @@ export default {
     },
     goBack() {
       this.selectedForm = null;
+    },
+    spectate() {
+      this.$router.push("/spectate");
     },
     async login() {
       try {
@@ -445,6 +453,25 @@ h1 {
   background-color: var(--panel-soft);
   border-color: var(--gold);
   transform: translateY(-1px);
+}
+
+.menu-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35em;
+}
+
+.menu-row {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.spectate-button {
+  background-color: transparent;
+  padding: 0.7em 2.2em;
+  font-size: clamp(14px, 2vw, 18px);
 }
 
 .form-container {

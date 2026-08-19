@@ -14,6 +14,7 @@ Immerse yourself in a world of strategy with our massively multiplayer online re
 - Experience the unique **action-based system**, with a set number of actions per user per turn.
 - Server-side game loop with customizable intervals.
 - Enjoy seamless gameplay with a **graceful server shutdown and restart** mechanism.
+- **Spectate** the live map from the main menu with no account.
 
 ## Gameplay Mechanics
 

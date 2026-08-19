@@ -5,36 +5,44 @@ import LoginView from "../views/LoginView.vue";
 import userAuth from "./middlewares/userAuth";
 import guestOnly from "./middlewares/guestOnly";
 
+const boardImages = [
+  "/images/icons/gold.png",
+  "/images/icons/wood.png",
+  "/images/icons/stone.png",
+  "/images/icons/food.png",
+  "/images/units/worker.png",
+  "/images/units/axeman.png",
+  "/images/units/archer.png",
+  "/images/units/deer.png",
+  "/images/buildings/structureSpawn.png",
+  "/images/buildings/structureTower.png",
+  "/images/terrain/plains.png",
+  "/images/terrain/mountain.png",
+  "/images/terrain/tundra.png",
+  "/images/resources/gold.png",
+  "/images/resources/gold2.png",
+  "/images/resources/wood.png",
+  "/images/resources/stone.png",
+];
+
 const routes = [
   {
     path: "/",
     name: "Board",
     component: BoardView,
     beforeEnter: (to, from, next) => {
-      preloadImages(
-        [
-          "/images/icons/gold.png",
-          "/images/icons/wood.png",
-          "/images/icons/stone.png",
-          "/images/icons/food.png",
-          "/images/units/worker.png",
-          "/images/units/axeman.png",
-          "/images/units/archer.png",
-          "/images/units/deer.png",
-          "/images/buildings/structureSpawn.png",
-          "/images/buildings/structureTower.png",
-          "/images/terrain/plains.png",
-          "/images/terrain/mountain.png",
-          "/images/terrain/tundra.png",
-          "/images/resources/gold.png",
-          "/images/resources/gold2.png",
-          "/images/resources/wood.png",
-          "/images/resources/stone.png",
-        ],
-        () => {
-          userAuth(to, from, next);
-        }
-      );
+      preloadImages(boardImages, () => {
+        userAuth(to, from, next);
+      });
+    },
+  },
+  {
+    path: "/spectate",
+    name: "Spectate",
+    component: BoardView,
+    meta: { spectate: true },
+    beforeEnter: (to, from, next) => {
+      preloadImages(boardImages, () => next());
     },
   },
   {
