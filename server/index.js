@@ -939,14 +939,14 @@ const hydrateQueuesFromDb = async () => {
   if (added) console.log("hydrated", added, "persisted actions into memory queues");
 };
 
-cron.schedule("0 * * * *", async () => {
+const runHourlyTick = async (reason = "cron") => {
+  console.log("running turn tick:", reason);
   board = await loadBoardState(db);
   await hydrateQueuesFromDb();
   await processActions();
   const resetSuccessful = await resetActions();
 
   if (resetSuccessful) {
-    // Emit 'actionsReset' event to all connected clients
     io.sockets.emit("actionsReset");
   }
   const timerValue = getTimerAmount();
@@ -955,8 +955,28 @@ cron.schedule("0 * * * *", async () => {
   taskTimestamp.timestamp = newTimestamp;
   await taskTimestamp.save();
   nextTaskTimestamp = newTimestamp;
-  // Broadcast the remaining time
   broadcastRemainingTime();
+  console.log("turn tick finished:", reason);
+};
+
+cron.schedule("0 * * * *", async () => {
+  await runHourlyTick("cron");
+});
+
+// Manual tick. Nginx proxies this, so require a shared secret — do not
+// trust remoteAddress (it is 127.0.0.1 from nginx).
+app.post("/internal/tick", async (req, res) => {
+  const expected = process.env.TICK_SECRET || process.env.AUTH_SECRET_KEY;
+  if (!expected || req.get("x-tick-secret") !== expected) {
+    return res.status(403).json({ message: "forbidden" });
+  }
+  try {
+    await runHourlyTick("http");
+    res.json({ ok: true });
+  } catch (error) {
+    console.error("manual tick failed:", error);
+    res.status(500).json({ ok: false });
+  }
 });
 
 // The original daily dropDatabase() cron is intentionally gone: the world and
